@@ -179,3 +179,5 @@ webbläsaren och gäller för hela appen.
   tillsammans med automatiska backuper.
 - Servern binder till alla nätverksgränssnitt på port `3500`, så den går
   att nå från andra enheter i samma nätverk (se "Nätverksåtkomst" ovan).
+#   e - m a c h i n e  
+ 

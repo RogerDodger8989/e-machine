@@ -1,0 +1,174 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// --- Kunder ---------------------------------------------------------------
+
+model Customer {
+  id                 String    @id @default(cuid())
+  name               String // kontaktperson
+  company            String?
+  phone              String?
+  phoneNormalized    String?   @map("phone_normalized") // siffror utan formatering, för sökning
+  email              String?
+  address            String?
+  postalCode         String?   @map("postal_code")
+  city               String?
+  marketingConsent   Boolean   @default(false) @map("marketing_consent")
+  marketingConsentAt DateTime? @map("marketing_consent_at")
+  notes              String?
+  isDeleted          Boolean   @default(false) @map("is_deleted")
+  anonymizedAt       DateTime? @map("anonymized_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  ownerships  MachineOwnership[]
+  messageLogs MessageLog[]
+
+  @@map("customers")
+}
+
+// --- Masterlista (maskinmodeller) ------------------------------------------
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  machineModels MachineModel[]
+
+  @@map("categories")
+}
+
+model MachineModel {
+  id                             String   @id @default(cuid())
+  manufacturer                   String // 'Stiga' | 'Stihl'
+  modelName                      String   @map("model_name")
+  categoryId                     String?  @map("category_id")
+  category                       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  standardWarrantyMonths         Int      @default(24) @map("standard_warranty_months")
+  standardServiceIntervalMonths  Int      @default(12) @map("standard_service_interval_months")
+  createdAt                      DateTime @default(now()) @map("created_at")
+  updatedAt                      DateTime @updatedAt @map("updated_at")
+
+  machines Machine[]
+
+  @@unique([manufacturer, modelName])
+  @@map("machine_models")
+}
+
+// --- Äganderegister ----------------------------------------------------------
+
+model Machine {
+  id              String    @id @default(cuid())
+  modelId         String    @map("model_id")
+  model           MachineModel @relation(fields: [modelId], references: [id])
+  serialNumber    String    @unique @map("serial_number")
+  purchaseDate    DateTime? @map("purchase_date")
+  warrantyEndDate DateTime? @map("warranty_end_date")
+  notes           String?
+  offersPickupService Boolean @default(false) @map("offers_pickup_service")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  ownerships  MachineOwnership[]
+  messageLogs MessageLog[]
+
+  @@map("machines")
+}
+
+model MachineOwnership {
+  id           String    @id @default(cuid())
+  machineId    String    @map("machine_id")
+  machine      Machine   @relation(fields: [machineId], references: [id])
+  customerId   String    @map("customer_id")
+  customer     Customer  @relation(fields: [customerId], references: [id])
+  ownedFrom    DateTime  @default(now()) @map("owned_from")
+  ownedUntil   DateTime? @map("owned_until") // NULL = nuvarande ägare
+  unlinkReason String?   @map("unlink_reason") // 'sold' | 'scrapped' | 'returned' | 'other'
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("machine_ownerships")
+}
+
+// --- Sms (skicka SMS när en vara kommit in, oavsett om numret tillhör en
+// registrerad kund) ------------------------------------------------------
+
+model Order {
+  id                 String    @id @default(cuid())
+  phoneNumber        String    @map("phone_number") // mottagarens nummer, skrivs in direkt
+  articleDescription String    @map("article_description")
+  amountDue          Int?      @map("amount_due") // kr att betala vid uthämtning
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  messageLogs MessageLog[]
+
+  @@index([createdAt])
+  @@map("orders")
+}
+
+// --- Mallar & utskicksregister (GDPR-granskningsbart) ------------------------
+
+model MessageTemplate {
+  id         String   @id @default(cuid())
+  key        String   @unique
+  channel    String // 'sms' | 'email'
+  legalBasis String   @map("legal_basis") // 'service_reminder' | 'marketing' | 'order_ready'
+  subject    String?
+  body       String // stödjer {{customer_name}}, {{model_name}}, {{serial_number}}, {{shop_name}}
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("message_templates")
+}
+
+// Utskicksregistret: vad skickades, till vem, när, och under vilken rättslig
+// grund. recipientAddress och bodySent är ögonblicksbilder — påverkas inte av
+// senare kund- eller malländringar (eller av att kunden anonymiserats).
+model MessageLog {
+  id                String    @id @default(cuid())
+  customerId        String?   @map("customer_id")
+  customer          Customer? @relation(fields: [customerId], references: [id])
+  machineId         String?   @map("machine_id")
+  machine           Machine?  @relation(fields: [machineId], references: [id])
+  orderId           String?   @map("order_id")
+  order             Order?    @relation(fields: [orderId], references: [id])
+  templateKey       String?   @map("template_key")
+  channel           String // 'sms' | 'email'
+  legalBasis        String    @map("legal_basis") // 'service_reminder' | 'marketing' | 'order_ready'
+  recipientAddress  String?   @map("recipient_address")
+  subject           String?
+  bodySent          String    @map("body_sent")
+  status            String // 'sent' | 'failed' | 'blocked'
+  provider          String // '46elks' | 'sendgrid'
+  providerMessageId String?   @map("provider_message_id")
+  errorMessage      String?   @map("error_message")
+  sentAt            DateTime? @map("sent_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  retryOfId         String?      @map("retry_of_id")
+  retryOf           MessageLog?  @relation("MessageLogRetries", fields: [retryOfId], references: [id])
+  retries           MessageLog[] @relation("MessageLogRetries")
+
+  @@index([customerId, createdAt])
+  @@index([machineId, createdAt])
+  @@map("message_log")
+}
+
+// --- Inställningar (nyckel/värde) --------------------------------------------
+
+model Setting {
+  key   String @id
+  value String // JSON-sträng
+
+  @@map("settings")
+}

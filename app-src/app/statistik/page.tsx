@@ -1,0 +1,340 @@
+import { getMachineSalesStats } from "@/lib/statistics";
+import { getMessageStats } from "@/lib/messageStatistics";
+import { StatistikFilters } from "@/components/statistik-filters";
+import { SalesBarChart, type BarChartDatum } from "@/components/sales-bar-chart";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+const STATUS_LABEL: Record<string, string> = { sent: "Skickat", failed: "Misslyckades", blocked: "Blockerat" };
+const CHANNEL_LABEL: Record<string, string> = { sms: "SMS", email: "E-post" };
+const LEGAL_BASIS_LABEL: Record<string, string> = {
+  service_reminder: "Servicepåminnelse",
+  marketing: "Marknadsföring",
+  order_ready: "Sms",
+};
+const STATUS_ORDER = ["sent", "blocked", "failed"];
+
+export const dynamic = "force-dynamic";
+
+const MONTH_LABELS = [
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "maj",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "okt",
+  "nov",
+  "dec",
+];
+
+function monthLabel(yearMonth: string): string {
+  const [year, month] = yearMonth.split("-");
+  return `${MONTH_LABELS[Number(month) - 1]} ${year}`;
+}
+
+function toISODate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function defaultRange(): { from: string; to: string } {
+  const now = new Date();
+  const from = new Date(now);
+  from.setMonth(from.getMonth() - 12);
+  return { from: toISODate(from), to: toISODate(now) };
+}
+
+export default async function StatistikPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
+  const params = await searchParams;
+  const fallback = defaultRange();
+  const from = params.from ?? fallback.from;
+  const to = params.to ?? fallback.to;
+
+  const fromDate = new Date(`${from}T00:00:00`);
+  const toDate = new Date(`${to}T23:59:59`);
+
+  const stats = await getMachineSalesStats(fromDate, toDate);
+  const messageStats = await getMessageStats(fromDate, toDate);
+
+  const monthlyByPeriod = new Map<string, BarChartDatum>();
+  const cursor = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+  const monthEnd = new Date(toDate.getFullYear(), toDate.getMonth(), 1);
+  while (cursor <= monthEnd) {
+    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+    monthlyByPeriod.set(key, { period: key, label: monthLabel(key), values: {} });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  for (const row of stats.monthly) {
+    const existing = monthlyByPeriod.get(row.yearMonth);
+    if (existing) existing.values[row.manufacturer] = row.count;
+    else
+      monthlyByPeriod.set(row.yearMonth, {
+        period: row.yearMonth,
+        label: monthLabel(row.yearMonth),
+        values: { [row.manufacturer]: row.count },
+      });
+  }
+  const monthlyData = [...monthlyByPeriod.values()].sort((a, b) => a.period.localeCompare(b.period));
+
+  const yearlyByPeriod = new Map<string, BarChartDatum>();
+  for (let y = fromDate.getFullYear(); y <= toDate.getFullYear(); y++) {
+    yearlyByPeriod.set(String(y), { period: String(y), label: String(y), values: {} });
+  }
+  for (const row of stats.yearly) {
+    const existing = yearlyByPeriod.get(row.year);
+    if (existing) existing.values[row.manufacturer] = row.count;
+    else
+      yearlyByPeriod.set(row.year, {
+        period: row.year,
+        label: row.year,
+        values: { [row.manufacturer]: row.count },
+      });
+  }
+  const yearlyData = [...yearlyByPeriod.values()].sort((a, b) => a.period.localeCompare(b.period));
+
+  const messageMonthlyByPeriod = new Map<string, BarChartDatum>();
+  const messageCursor = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+  while (messageCursor <= monthEnd) {
+    const key = `${messageCursor.getFullYear()}-${String(messageCursor.getMonth() + 1).padStart(2, "0")}`;
+    messageMonthlyByPeriod.set(key, { period: key, label: monthLabel(key), values: {} });
+    messageCursor.setMonth(messageCursor.getMonth() + 1);
+  }
+  for (const row of messageStats.monthly) {
+    const label = STATUS_LABEL[row.status] ?? row.status;
+    const existing = messageMonthlyByPeriod.get(row.yearMonth);
+    if (existing) existing.values[label] = row.count;
+    else
+      messageMonthlyByPeriod.set(row.yearMonth, {
+        period: row.yearMonth,
+        label: monthLabel(row.yearMonth),
+        values: { [label]: row.count },
+      });
+  }
+  const messageMonthlyData = [...messageMonthlyByPeriod.values()].sort((a, b) => a.period.localeCompare(b.period));
+  const messageStatusCount = (status: string) =>
+    messageStats.byStatus.find((s) => s.status === status)?.count ?? 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-semibold">Statistik</h1>
+        <p className="text-sm text-muted-foreground">
+          {stats.totalCount} sålda maskiner i valt intervall
+        </p>
+      </div>
+
+      <StatistikFilters from={from} to={to} />
+
+      {stats.manufacturers.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Inga sålda maskiner registrerade i det valda intervallet.
+        </p>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Sålda maskiner per tillverkare</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="month">
+              <TabsList>
+                <TabsTrigger value="month">Månad för månad</TabsTrigger>
+                <TabsTrigger value="year">År för år</TabsTrigger>
+              </TabsList>
+              <TabsContent value="month" className="pt-4 space-y-4">
+                <SalesBarChart data={monthlyData} manufacturers={stats.manufacturers} />
+                <details>
+                  <summary className="cursor-pointer text-sm text-muted-foreground">
+                    Visa som tabell
+                  </summary>
+                  <div className="mt-2 overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Månad</TableHead>
+                          {stats.manufacturers.map((m) => (
+                            <TableHead key={m} className="text-right">
+                              {m}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {monthlyData.map((row) => (
+                          <TableRow key={row.period}>
+                            <TableCell>{row.label}</TableCell>
+                            {stats.manufacturers.map((m) => (
+                              <TableCell key={m} className="text-right tabular-nums">
+                                {row.values[m] ?? 0}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </details>
+              </TabsContent>
+              <TabsContent value="year" className="pt-4 space-y-4">
+                <SalesBarChart data={yearlyData} manufacturers={stats.manufacturers} />
+                <details>
+                  <summary className="cursor-pointer text-sm text-muted-foreground">
+                    Visa som tabell
+                  </summary>
+                  <div className="mt-2 overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>År</TableHead>
+                          {stats.manufacturers.map((m) => (
+                            <TableHead key={m} className="text-right">
+                              {m}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {yearlyData.map((row) => (
+                          <TableRow key={row.period}>
+                            <TableCell>{row.label}</TableCell>
+                            {stats.manufacturers.map((m) => (
+                              <TableCell key={m} className="text-right tabular-nums">
+                                {row.values[m] ?? 0}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </details>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Sålda maskiner per modell</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tillverkare</TableHead>
+                <TableHead>Modell</TableHead>
+                <TableHead className="text-right">Antal</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {stats.byModel.map((row) => (
+                <TableRow key={row.modelId}>
+                  <TableCell>{row.manufacturer}</TableCell>
+                  <TableCell className="font-medium">{row.modelName}</TableCell>
+                  <TableCell className="text-right tabular-nums">{row.count}</TableCell>
+                </TableRow>
+              ))}
+              {stats.byModel.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                    Inga sålda maskiner i det valda intervallet.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Utskick</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-6 text-sm">
+            <p>
+              <span className="text-muted-foreground">Totalt: </span>
+              <span className="font-medium tabular-nums">{messageStats.total}</span>
+            </p>
+            <p>
+              <span className="text-muted-foreground">Skickat: </span>
+              <span className="font-medium tabular-nums">{messageStatusCount("sent")}</span>
+            </p>
+            <p>
+              <span className="text-muted-foreground">Misslyckades: </span>
+              <span className="font-medium tabular-nums">{messageStatusCount("failed")}</span>
+            </p>
+            <p>
+              <span className="text-muted-foreground">Blockerat: </span>
+              <span className="font-medium tabular-nums">{messageStatusCount("blocked")}</span>
+            </p>
+          </div>
+
+          {messageStats.total === 0 ? (
+            <p className="text-sm text-muted-foreground">Inga utskick registrerade i det valda intervallet.</p>
+          ) : (
+            <>
+              <SalesBarChart
+                data={messageMonthlyData}
+                manufacturers={STATUS_ORDER.filter((s) => messageStats.statuses.includes(s)).map(
+                  (s) => STATUS_LABEL[s] ?? s
+                )}
+              />
+              <details>
+                <summary className="cursor-pointer text-sm text-muted-foreground">
+                  Visa uppdelat på kanal och typ
+                </summary>
+                <div className="mt-2 overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Kanal</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Antal</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {messageStats.byChannelStatus.map((row) => (
+                        <TableRow key={`${row.channel}-${row.status}`}>
+                          <TableCell>{CHANNEL_LABEL[row.channel] ?? row.channel}</TableCell>
+                          <TableCell>{STATUS_LABEL[row.status] ?? row.status}</TableCell>
+                          <TableCell className="text-right tabular-nums">{row.count}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <Table className="mt-4">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Typ</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Antal</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {messageStats.byLegalBasisStatus.map((row) => (
+                        <TableRow key={`${row.legalBasis}-${row.status}`}>
+                          <TableCell>{LEGAL_BASIS_LABEL[row.legalBasis] ?? row.legalBasis}</TableCell>
+                          <TableCell>{STATUS_LABEL[row.status] ?? row.status}</TableCell>
+                          <TableCell className="text-right tabular-nums">{row.count}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </details>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

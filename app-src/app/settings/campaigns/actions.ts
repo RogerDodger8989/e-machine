@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { sendMessage } from "@/lib/messaging/sendMessage";
+import { wasRecentlySent } from "@/lib/messaging/dedup";
 
 export interface SendCampaignResult {
   sent: number;
@@ -10,8 +11,6 @@ export interface SendCampaignResult {
   failed: number;
   skipped: number;
 }
-
-const DUPLICATE_WINDOW_MINUTES = 10;
 
 /**
  * Skickar en manuell kampanj (marknadsföring) till valda kunder på valda
@@ -35,19 +34,9 @@ export async function sendCampaign(
     where: { id: { in: customerIds }, isDeleted: false },
   });
 
-  const windowStart = new Date(Date.now() - DUPLICATE_WINDOW_MINUTES * 60 * 1000);
-
   for (const customer of customers) {
     for (const templateKey of templateKeys) {
-      const recentSend = await prisma.messageLog.findFirst({
-        where: {
-          customerId: customer.id,
-          templateKey,
-          status: { in: ["sent", "blocked"] },
-          createdAt: { gt: windowStart },
-        },
-      });
-      if (recentSend) {
+      if (await wasRecentlySent(customer.id, templateKey)) {
         result.skipped++;
         continue;
       }

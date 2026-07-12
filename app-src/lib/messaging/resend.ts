@@ -40,12 +40,13 @@ export async function attemptResend(logId: string): Promise<ResendOutcome> {
   if (log.customer.isDeleted) {
     return { ok: false, reason: "Kunden är raderad/anonymiserad, kan inte skickas om." };
   }
-  if (log.legalBasis === "service_reminder" && (!log.machineId || !log.machine)) {
+  const requiresMachine = log.legalBasis === "service_reminder" || log.legalBasis === "campaign_sheet";
+  if (requiresMachine && (!log.machineId || !log.machine)) {
     return { ok: false, reason: "Maskinen är inte längre kopplad till loggen, kan inte skickas om." };
   }
 
   let variables: Record<string, string>;
-  if (log.legalBasis === "service_reminder" && log.machine) {
+  if (requiresMachine && log.machine) {
     variables = {
       customer_name: log.customer.name,
       model_name: `${log.machine.model.manufacturer} ${log.machine.model.modelName}`,
@@ -85,7 +86,7 @@ export function getResendEligibility(
   if (log.status !== "failed") return { canResend: false };
   if (!log.customerId) return { canResend: false, reason: "Kunden är okänd." };
   if (customerIsDeleted) return { canResend: false, reason: "Kunden är raderad/anonymiserad." };
-  if (log.legalBasis === "service_reminder" && !log.machineId) {
+  if ((log.legalBasis === "service_reminder" || log.legalBasis === "campaign_sheet") && !log.machineId) {
     return { canResend: false, reason: "Maskinen är inte längre kopplad till loggen." };
   }
   return { canResend: true };

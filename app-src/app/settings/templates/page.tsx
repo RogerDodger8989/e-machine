@@ -13,6 +13,7 @@ const LEGAL_BASIS_LABEL: Record<string, string> = {
   service_reminder: "Servicepåminnelse",
   marketing: "Marknadsföring",
   order_ready: "Sms",
+  campaign_sheet: "Kampanjblad",
 };
 
 export default async function MessageTemplatesPage() {

@@ -64,7 +64,7 @@ export function NewCustomerForm() {
         <Textarea id="notes" name="notes" rows={3} />
       </div>
       <div className="flex items-start gap-2">
-        <Checkbox id="marketingConsent" name="marketingConsent" />
+        <Checkbox id="marketingConsent" name="marketingConsent" defaultChecked />
         <Label htmlFor="marketingConsent" className="font-normal leading-snug">
           Kunden samtycker till att få SMS/e-post om erbjudanden och nyheter (utöver
           service­påminnelser, som inte kräver samtycke).

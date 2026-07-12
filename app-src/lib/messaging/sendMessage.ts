@@ -3,11 +3,13 @@ import { ElksProvider } from "@/lib/messaging/providers/elks";
 import { MailercloudProvider } from "@/lib/messaging/providers/mailercloud";
 import type { MessageProvider } from "@/lib/messaging/types";
 import { getMessagingConfig } from "@/lib/messaging/config";
+import { renderTemplate } from "@/lib/messaging/renderTemplate";
 import { toE164Sweden } from "@/lib/phone";
 
-function renderTemplate(text: string, variables: Record<string, string>): string {
-  return text.replace(/\{\{(\w+)\}\}/g, (_, key) => variables[key] ?? "");
-}
+// Mallar med dessa rättsliga grunder räknas som marknadsföring och kräver
+// kundens uttryckliga samtycke — kampanjblad är en variant av
+// marknadsföring (ofta ett erbjudande), inte servicerelaterad information.
+const REQUIRES_MARKETING_CONSENT = new Set(["marketing", "campaign_sheet"]);
 
 function getProvider(channel: string): { provider: MessageProvider; providerName: string } {
   if (channel === "sms") return { provider: new ElksProvider(), providerName: "46elks" };
@@ -61,7 +63,7 @@ export async function sendMessage(input: SendMessageInput) {
     retryOfId: input.retryOfId ?? null,
   };
 
-  if (template.legalBasis === "marketing" && !customer?.marketingConsent) {
+  if (REQUIRES_MARKETING_CONSENT.has(template.legalBasis) && !customer?.marketingConsent) {
     return prisma.messageLog.create({
       data: { ...baseLog, status: "blocked", errorMessage: "Kunden har inte lämnat samtycke" },
     });

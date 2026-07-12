@@ -26,7 +26,7 @@ Sök på kundnamn, telefonnummer, modell eller serienummer — resultat visas di
 
 Register över alla kunder: kontaktperson, ev. företag, telefon, e-post, adress, samt om kunden lämnat samtycke till marknadsföringsutskick.
 
-- **Skapa/redigera kund** via formuläret.
+- **Skapa/redigera kund** via formuläret. Samtycke till marknadsföring är förikryssat som standard för nya kunder — avmarkera vid behov om en specifik kund inte vill ha kampanjutskick.
 - **Kundsidan** visar kontaktuppgifter, alla registrerade maskiner (med snabblänk till att lägga till en ny), ett fritt **anteckningsfält** som sparas direkt utan att behöva gå in i redigeringsläge, och ett **utskicksregister** — allt som skickats till just den kunden, med status och möjlighet att skicka om misslyckade utskick.
 - **E-postadresser är klickbara**: klick öppnar ett nytt utkast i Outlook.com i en ny flik; en liten kopiera-ikon bredvid kopierar adressen och bekräftar med en notis.
 - **"Radera kund"** raderar inte kunden helt (GDPR-anonymisering) — namn, telefon, e-post och adress rensas, men maskinhistorik och utskicksregister finns kvar (nu kopplat till "Raderad kund") som ett spårbart, anonymt underlag.
@@ -40,7 +40,7 @@ Register över alla sålda/registrerade maskiner, kopplade till sin ägare.
 - **Registrera ny maskin**: välj kund, välj modell (eller skapa en ny modell direkt i formuläret utan att lämna sidan), serienummer (dubbletter blockeras automatiskt, oavsett skiftläge), inköpsdatum, garantitid (förvalt från modellens standardgaranti, eller ange eget slutdatum).
 - **"Erbjuder hämt-/lämnservice"**: kryssruta som avgör om maskinen är berättigad till kampanjbladet nedan.
 - **Koppla loss maskin** från en kund (t.ex. såld vidare, skrotad, återlämnad) utan att radera maskinen eller dess servicehistorik — den syns sedan som "tidigare ägd" på både maskinen och den gamla ägaren.
-- **Skriv ut kampanjblad**: för maskiner med hämt-/lämnservice ikryssad dyker en knapp upp (både på maskinsidan och direkt i kundens maskinlista) som öppnar ett utskriftsklart A4-blad — er logga, adress, telefon och org.nr, kundens adress, samt en fast text om rekommenderad service var 50:e mil/år och erbjudandet om hämtning/återlämning för 900 kr inom Skåne. Skrivs ut eller sparas som PDF via webbläsarens vanliga utskriftsfunktion (Ctrl+P).
+- **Kampanjblad**: för maskiner med hämt-/lämnservice ikryssad dyker en länk upp (både på maskinsidan och direkt i kundens maskinlista) till ett utskriftsklart A4-blad — er logga, adress, telefon och org.nr, kundens adress, samt en text om erbjudandet. Går att skriva ut/spara som PDF via webbläsarens utskriftsfunktion (Ctrl+P), eller **maila direkt till kunden** med en knapp på samma sida (kräver att kunden har e-post och lämnat marknadsföringssamtycke). Finns fler kampanjblad väljer man vilket som ska visas/skrivas ut/mailas i en lista högst upp. Kampanjbladen skapas och redigeras under Inställningar → Kampanjblad, där man även kan maila ett valt kampanjblad till flera kunder på en gång.
 
 ---
 
@@ -86,6 +86,7 @@ En samlad logg över **alla** utskick i hela appen — servicepåminnelser, kamp
 ## Inställningar
 
 - **Företagsuppgifter**: namn, adress, telefon, org.nr och logga — används på kampanjblad och som avsändarinformation i mallar.
+- **Kampanjblad**: skapa och redigera flera olika kampanjblad (t.ex. ett standarderbjudande och separata säsongskampanjer), med samma `{{variabler}}` som mallarna nedan. Härifrån kan man även maila ett valt kampanjblad till flera kunder samtidigt — kräver marknadsföringssamtycke, precis som Kampanjer nedan.
 - **Mallar för utskick**: skapa nya mallar eller redigera befintliga för servicepåminnelser, marknadsföring och Sms. En referenstabell visar varje tillgänglig variabel (t.ex. `{{customer_name}}`) med exempel och förklaring — klicka på en variabel för att kopiera den direkt till mallen du skriver.
 - **Utskick**: konfigurera 46elks (SMS) och Mailercloud (e-post) — samma konto som redan används, ingen ny inloggning behövs.
 - **Servicepåminnelser**: granska vilka kunder som är aktuella för en påminnelse just nu, välj vilka och vilken kanal (SMS/e-post) — inget skickas automatiskt, du väljer och trycker skicka varje gång.

@@ -21,7 +21,7 @@ async function copyVariable(variable: string) {
   toast.success(`${variable} kopierad`);
 }
 
-export function TemplateVariableReference() {
+export function TemplateVariableReference({ showMallarNote = true }: { showMallarNote?: boolean }) {
   return (
     <Card>
       <CardHeader>
@@ -56,13 +56,15 @@ export function TemplateVariableReference() {
             ))}
           </TableBody>
         </Table>
-        <p className="text-xs text-muted-foreground">
-          Gäller mallar med rättslig grund <strong>Servicepåminnelse</strong> och{" "}
-          <strong>Marknadsföring</strong> — nyckeln <code>service_reminder</code> används av det
-          dagliga påminnelsejobbet. <strong>Sms-mallar</strong> (Klar för hämtning m.fl.) är ren text
-          utan variabler — det du skriver skickas exakt som det står, och kan redigeras fritt för
-          varje utskick på Sms-sidan.
-        </p>
+        {showMallarNote && (
+          <p className="text-xs text-muted-foreground">
+            Gäller mallar med rättslig grund <strong>Servicepåminnelse</strong> och{" "}
+            <strong>Marknadsföring</strong> — nyckeln <code>service_reminder</code> används av det
+            dagliga påminnelsejobbet. <strong>Sms-mallar</strong> (Klar för hämtning m.fl.) är ren text
+            utan variabler — det du skriver skickas exakt som det står, och kan redigeras fritt för
+            varje utskick på Sms-sidan.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

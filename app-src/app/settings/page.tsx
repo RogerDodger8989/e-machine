@@ -29,6 +29,19 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Kampanjblad</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Skapa flera olika kampanjblad (t.ex. hämt-/lämnerbjudande, säsongskampanjer) — skrivs ut
+            per maskin, eller mailas till en enskild kund eller flera på en gång.
+          </p>
+          <Button variant="outline" nativeButton={false} render={<Link href="/settings/campaign-sheet">Hantera kampanjblad</Link>} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Mallar för utskick</CardTitle>
         </CardHeader>
         <CardContent>

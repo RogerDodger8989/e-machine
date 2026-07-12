@@ -28,6 +28,12 @@ export async function attemptResend(logId: string): Promise<ResendOutcome> {
 
   if (!log) return { ok: false, reason: "Loggraden hittades inte." };
   if (!log.templateKey) return { ok: false, reason: "Ingen mall kopplad till loggraden." };
+
+  const template = await prisma.messageTemplate.findUnique({ where: { key: log.templateKey } });
+  if (!template || !template.isActive) {
+    return { ok: false, reason: `Mallen "${log.templateKey}" är inaktiverad eller borttagen — kan inte skickas om.` };
+  }
+
   if (!log.customerId || !log.customer) {
     return { ok: false, reason: "Kunden är okänd, kan inte skickas om." };
   }
@@ -49,15 +55,21 @@ export async function attemptResend(logId: string): Promise<ResendOutcome> {
     variables = { customer_name: log.customer.name };
   }
 
-  const newLog = await sendMessage({
-    templateKey: log.templateKey,
-    customerId: log.customerId,
-    machineId: log.machineId ?? undefined,
-    variables,
-    retryOfId: log.id,
-  });
-
-  return { ok: true, status: newLog.status as "sent" | "failed" | "blocked" };
+  try {
+    const newLog = await sendMessage({
+      templateKey: log.templateKey,
+      customerId: log.customerId,
+      machineId: log.machineId ?? undefined,
+      variables,
+      retryOfId: log.id,
+    });
+    return { ok: true, status: newLog.status as "sent" | "failed" | "blocked" };
+  } catch (e) {
+    // sendMessage() kan i undantagsfall kasta (t.ex. om mallen togs bort
+    // mellan kollen ovan och detta anrop) — fångas här så ett omförsök
+    // aldrig kraschar sidan, bara visas som ett misslyckat omskick.
+    return { ok: false, reason: (e as Error).message };
+  }
 }
 
 /**

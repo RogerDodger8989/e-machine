@@ -65,7 +65,11 @@ export function CampaignSend({
   function handleSend() {
     startTransition(async () => {
       const res = await sendCampaign([...selectedCustomers], [...selectedTemplates]);
-      setResult(`${res.sent} skickade, ${res.blocked} blockerade (inget samtycke/kontaktväg), ${res.failed} misslyckades.`);
+      setResult(
+        `${res.sent} skickade, ${res.blocked} blockerade (inget samtycke/kontaktväg), ${res.failed} misslyckades` +
+          (res.skipped > 0 ? `, ${res.skipped} redan skickade nyligen (hoppades över)` : "") +
+          "."
+      );
       setSelectedCustomers(new Set());
     });
   }

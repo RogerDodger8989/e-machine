@@ -8,6 +8,18 @@ import { getSetting, setSetting, deleteSetting } from "@/lib/settings";
 const KEEP_DAYS = 30;
 const EXTERNAL_DIR_KEY = "backupExternalDir";
 const EXTERNAL_STATUS_KEY = "backupExternalStatus";
+const AUTO_ENABLED_KEY = "backupAutoEnabled";
+
+/** Automatisk backup är påslagen som standard — bara ett uttryckligt "av"
+ * sparat i inställningarna stänger av den. */
+export async function isAutoBackupEnabled(): Promise<boolean> {
+  const value = await getSetting<boolean>(AUTO_ENABLED_KEY);
+  return value ?? true;
+}
+
+export async function setAutoBackupEnabled(enabled: boolean): Promise<void> {
+  await setSetting(AUTO_ENABLED_KEY, enabled);
+}
 
 export interface ExternalBackupStatus {
   ok: boolean;
@@ -105,10 +117,15 @@ async function copyToExternalDestination(sourcePath: string): Promise<void> {
   }
 }
 
-/** Körs vid varje programstart (samma "catch-up"-princip som påminnelserna) —
- * appen kör inte som bakgrundstjänst, så vi säkerställer en backup per dag
- * första gången programmet öppnas den dagen. */
+/** Körs vid programstart och därefter en gång i timmen så länge processen
+ * lever (se instrumentation.ts) — appen kör inte som en riktig
+ * bakgrundstjänst som startar om varje dygn, så ett enda anrop vid
+ * programstart räcker inte om datorn lämnas påslagen över midnatt. Både
+ * start- och timkollen anropar denna idempotenta funktion, som bara skapar
+ * en ny snapshot om dagens fil saknas. */
 export async function runDailyBackupIfNeeded(): Promise<void> {
+  if (!(await isAutoBackupEnabled())) return;
+
   const dir = getBackupDir();
   const todaysFile = path.join(dir, `e-machines-${todayStamp()}.db`);
   const exists = await fs
@@ -183,13 +200,16 @@ function daysAgoLabel(date: Date): string {
  */
 export async function getBackupHealth(): Promise<BackupHealth> {
   const today = todayStamp();
+  const autoEnabled = await isAutoBackupEnabled();
 
   const localBackups = await listBackups();
   const latestLocal = localBackups[0];
   let localWarning: string | null = null;
   if (!latestLocal) {
     localWarning = "Ingen lokal backup har skapats ännu.";
-  } else if (todayStamp(latestLocal.createdAt) !== today) {
+  } else if (autoEnabled && todayStamp(latestLocal.createdAt) !== today) {
+    // Om automatisk backup är avstängd är det förväntat att den inte är från
+    // idag — varna bara om den faktiskt borde ha körts.
     localWarning = `Senaste lokala backupen är från ${latestLocal.createdAt.toLocaleDateString("sv-SE")} (${daysAgoLabel(latestLocal.createdAt)}).`;
   }
 
@@ -201,13 +221,20 @@ export async function getBackupHealth(): Promise<BackupHealth> {
       externalWarning = "Extern backupplats är sparad men ingen kopiering har körts ännu.";
     } else if (!status.ok) {
       externalWarning = `Senaste kopieringen till den externa platsen misslyckades: ${status.error}`;
-    } else if (todayStamp(new Date(status.at)) !== today) {
+    } else if (autoEnabled && todayStamp(new Date(status.at)) !== today) {
       externalWarning = `Senaste lyckade kopieringen till den externa platsen var ${new Date(status.at).toLocaleDateString("sv-SE")} (${daysAgoLabel(new Date(status.at))}).`;
     }
   }
 
   return { localWarning, externalWarning };
 }
+
+// Kärntabellerna appen förutsätter finns — en backup från en äldre version
+// av appen (innan t.ex. "orders" fanns) skulle annars accepteras här men
+// krascha sidor som använder den saknade tabellen fram tills nästa omstart
+// kör migreringarna. Inte en fullständig schemaversionskontroll, men fångar
+// den vanligaste risken (en för gammal backupfil) utan att kräva den.
+const REQUIRED_TABLES = ["customers", "machines", "machine_models", "orders", "message_log", "message_templates"];
 
 function validateSqliteFile(filePath: string): void {
   const db = new Database(filePath, { readonly: true });
@@ -216,11 +243,18 @@ function validateSqliteFile(filePath: string): void {
     if (integrity.integrity_check !== "ok") {
       throw new Error("Filen verkar vara skadad (integrity_check misslyckades)");
     }
-    const hasCustomersTable = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='customers'")
-      .get();
-    if (!hasCustomersTable) {
-      throw new Error("Filen verkar inte vara en giltig e-Machines-databas");
+    const existingTables = new Set(
+      (db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]).map(
+        (t) => t.name
+      )
+    );
+    const missing = REQUIRED_TABLES.filter((t) => !existingTables.has(t));
+    if (missing.length > 0) {
+      throw new Error(
+        `Filen verkar inte vara en giltig eller tillräckligt ny e-Machines-databas (saknar tabell${
+          missing.length > 1 ? "erna" : ""
+        }: ${missing.join(", ")})`
+      );
     }
   } finally {
     db.close();

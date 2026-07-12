@@ -5,6 +5,7 @@ import {
   getExternalBackupDir,
   getExternalBackupStatus,
   getBackupHealth,
+  isAutoBackupEnabled,
 } from "@/lib/backup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { RestoreBackupForm } from "@/components/restore-backup-form";
 import { BackupDestinationForm } from "@/components/backup-destination-form";
 import { BackupWarningBanner } from "@/components/backup-warning-banner";
+import { AutoBackupToggle } from "@/components/auto-backup-toggle";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 
 export const dynamic = "force-dynamic";
@@ -21,12 +23,13 @@ function formatBytes(bytes: number): string {
 }
 
 export default async function BackupSettingsPage() {
-  const [backups, externalDir, externalStatus, externalBackups, health] = await Promise.all([
+  const [backups, externalDir, externalStatus, externalBackups, health, autoEnabled] = await Promise.all([
     listBackups(),
     getExternalBackupDir(),
     getExternalBackupStatus(),
     listExternalBackups(),
     getBackupHealth(),
+    isAutoBackupEnabled(),
   ]);
 
   const warnings = [health.localWarning, health.externalWarning].filter((w): w is string => w !== null);
@@ -61,10 +64,18 @@ export default async function BackupSettingsPage() {
           <CardTitle>Automatiska backuper</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
+          <AutoBackupToggle enabled={autoEnabled} />
           <p className="text-muted-foreground">
-            En snapshot tas automatiskt första gången programmet startas varje dag,
-            sparas i <code>{getBackupDir()}</code> och behålls i 30 dagar.
-            {externalDir && " En kopia sparas även på den externa backupplatsen nedan."}
+            {autoEnabled ? (
+              <>
+                En ny snapshot tas automatiskt en gång per dag (kollas varje timme medan
+                programmet är igång, så det upptäcks även om datorn lämnas påslagen över
+                natten), sparas i <code>{getBackupDir()}</code> och behålls i 30 dagar.
+                {externalDir && " En kopia sparas även på den externa backupplatsen nedan."}
+              </>
+            ) : (
+              "Automatisk backup är avstängd — inga nya snapshots skapas av sig själva. Använd \"Ladda ner backup\" ovan för en manuell kopia."
+            )}
           </p>
           <Table>
             <TableHeader>

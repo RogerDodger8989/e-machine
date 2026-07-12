@@ -78,8 +78,12 @@ function DeleteLogButton({ log }: { log: LogRow }) {
 
   function handleDelete() {
     startTransition(async () => {
-      await deleteMessageLog(log.id);
-      setOpen(false);
+      try {
+        await deleteMessageLog(log.id);
+        setOpen(false);
+      } catch (err) {
+        toast.error((err as Error).message);
+      }
     });
   }
 

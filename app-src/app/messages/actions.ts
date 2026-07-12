@@ -54,11 +54,12 @@ export async function resendAllFailed(): Promise<ResendAllFailedResult> {
  */
 export async function deleteMessageLog(logId: string) {
   const log = await prisma.messageLog.findUnique({ where: { id: logId }, select: { customerId: true } });
+  if (!log) return; // redan borttagen (t.ex. dubbelklick) — inget att göra
 
   await prisma.messageLog.updateMany({ where: { retryOfId: logId }, data: { retryOfId: null } });
   await prisma.messageLog.delete({ where: { id: logId } });
 
   revalidatePath("/messages");
   revalidatePath("/sms");
-  if (log?.customerId) revalidatePath(`/customers/${log.customerId}`);
+  if (log.customerId) revalidatePath(`/customers/${log.customerId}`);
 }

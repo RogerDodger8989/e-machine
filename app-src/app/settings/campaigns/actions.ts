@@ -8,27 +8,50 @@ export interface SendCampaignResult {
   sent: number;
   blocked: number;
   failed: number;
+  skipped: number;
 }
+
+const DUPLICATE_WINDOW_MINUTES = 10;
 
 /**
  * Skickar en manuell kampanj (marknadsföring) till valda kunder på valda
  * mallar. Till skillnad från servicepåminnelser är det HÄR kundens uttryckliga
  * val av kunder och mall(ar) — inget "aktuellt datum"-filter. sendMessage()
  * spärrar ändå automatiskt kunder utan samtycke, som ett sista skyddsnät.
+ *
+ * Skydd mot dubbelsändning: om samma mall redan skickats till samma kund de
+ * senaste minuterna (t.ex. ett klick till efter en osäker första gång, eller
+ * två flikar/enheter öppna samtidigt) hoppas den kunden/mallen över istället
+ * för att skicka igen.
  */
 export async function sendCampaign(
   customerIds: string[],
   templateKeys: string[]
 ): Promise<SendCampaignResult> {
-  const result: SendCampaignResult = { sent: 0, blocked: 0, failed: 0 };
+  const result: SendCampaignResult = { sent: 0, blocked: 0, failed: 0, skipped: 0 };
   if (customerIds.length === 0 || templateKeys.length === 0) return result;
 
   const customers = await prisma.customer.findMany({
     where: { id: { in: customerIds }, isDeleted: false },
   });
 
+  const windowStart = new Date(Date.now() - DUPLICATE_WINDOW_MINUTES * 60 * 1000);
+
   for (const customer of customers) {
     for (const templateKey of templateKeys) {
+      const recentSend = await prisma.messageLog.findFirst({
+        where: {
+          customerId: customer.id,
+          templateKey,
+          status: { in: ["sent", "blocked"] },
+          createdAt: { gt: windowStart },
+        },
+      });
+      if (recentSend) {
+        result.skipped++;
+        continue;
+      }
+
       const log = await sendMessage({
         templateKey,
         customerId: customer.id,

@@ -19,7 +19,13 @@ function resolveWarrantyEndDate(
   if (warrantyYearsRaw === CUSTOM_WARRANTY_VALUE) {
     return customEndDateRaw ? new Date(customEndDateRaw) : null;
   }
-  return purchaseDate ? addMonths(purchaseDate, Number(warrantyYearsRaw) * 12) : null;
+  if (!purchaseDate) {
+    // Utan inköpsdatum går garantitiden inte att räkna ut — utan denna
+    // kontroll sparades garantidatumet tyst som null, vilket ser ut som att
+    // maskinen saknar garanti trots att en garantitid faktiskt valdes.
+    throw new Error("Inköpsdatum krävs för att beräkna garantitiden — eller välj \"Eget datum\" istället.");
+  }
+  return addMonths(purchaseDate, Number(warrantyYearsRaw) * 12);
 }
 
 /** Om modell-Select:et står på "+ Ny modell…" skapas modellen (eller

@@ -18,7 +18,13 @@ export function toE164Sweden(phone: string | null | undefined): string | null {
   const hasPlus = trimmed.startsWith("+");
   const digits = trimmed.replace(/\D/g, "");
   if (!digits) return null;
-  if (hasPlus) return `+${digits}`;
+  if (hasPlus) {
+    // "+46 0736562525" är ett vanligt inklistringsfel (landskod + kvarglömt
+    // inhemskt nolla) — "0" direkt efter svensk landskod är alltid felaktigt
+    // i E.164, så den nollan stryks. Andra landskoder (t.ex. +47) rörs inte.
+    if (digits.startsWith("460")) return `+46${digits.slice(3)}`;
+    return `+${digits}`;
+  }
   if (digits.startsWith("0046")) return `+46${digits.slice(4)}`;
   if (digits.startsWith("46")) return `+${digits}`;
   if (digits.startsWith("0")) return `+46${digits.slice(1)}`;

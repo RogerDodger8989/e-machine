@@ -36,10 +36,19 @@ export function CompanyProfileForm({ profile }: { profile: CompanyProfileView })
 
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const MAX_LOGO_BYTES = 3 * 1024 * 1024; // 3 MB — ryms bortom med marginal inom Server Action-gränsen
 
   async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_LOGO_BYTES) {
+      setError(`Bilden är för stor (${(file.size / 1024 / 1024).toFixed(1)} MB) — max 3 MB.`);
+      e.target.value = "";
+      return;
+    }
+    setError(null);
     const dataUrl = await readFileAsDataUrl(file);
     setLogoDataUrl(dataUrl);
     setLogoPreview(dataUrl);
@@ -47,16 +56,21 @@ export function CompanyProfileForm({ profile }: { profile: CompanyProfileView })
 
   function handleSave() {
     setSaved(false);
+    setError(null);
     startTransition(async () => {
-      const form = new FormData();
-      form.set("companyName", companyName);
-      form.set("companyAddress", companyAddress);
-      form.set("companyPhone", companyPhone);
-      form.set("companyOrgNumber", companyOrgNumber);
-      form.set("companyLogoDataUrl", logoDataUrl ?? "");
-      await updateCompanyProfile(form);
-      setLogoDataUrl(null);
-      setSaved(true);
+      try {
+        const form = new FormData();
+        form.set("companyName", companyName);
+        form.set("companyAddress", companyAddress);
+        form.set("companyPhone", companyPhone);
+        form.set("companyOrgNumber", companyOrgNumber);
+        form.set("companyLogoDataUrl", logoDataUrl ?? "");
+        await updateCompanyProfile(form);
+        setLogoDataUrl(null);
+        setSaved(true);
+      } catch (err) {
+        setError((err as Error).message || "Kunde inte spara — försök igen.");
+      }
     });
   }
 
@@ -131,6 +145,7 @@ export function CompanyProfileForm({ profile }: { profile: CompanyProfileView })
           </Button>
           {saved && <p className="text-sm text-muted-foreground">Sparat.</p>}
         </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
       </CardContent>
     </Card>
   );

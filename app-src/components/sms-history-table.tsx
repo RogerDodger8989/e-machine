@@ -105,8 +105,12 @@ function DeleteButton({ order }: { order: SmsOrderRow }) {
 
   function handleDelete() {
     startTransition(async () => {
-      await deleteOrder(order.id);
-      setOpen(false);
+      try {
+        await deleteOrder(order.id);
+        setOpen(false);
+      } catch (err) {
+        toast.error((err as Error).message);
+      }
     });
   }
 

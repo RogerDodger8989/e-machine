@@ -36,11 +36,17 @@ export async function sendOrderReminder(orderId: string) {
     include: { messageLogs: { orderBy: { createdAt: "asc" }, take: 1 } },
   });
 
-  const originalMessage = order.messageLogs[0]?.bodySent ?? order.articleDescription;
+  // Om den ursprungliga loggraden har tagits bort (t.ex. via /messages) finns
+  // ingen text att skicka om — måste stoppas här, annars skulle vi av misstag
+  // kunna skicka "vara/artikel"-fältet som SMS-text till en riktig kund.
+  const original = order.messageLogs[0];
+  if (!original) {
+    throw new Error("Inget tidigare meddelande att skicka om — den ursprungliga loggraden är borttagen.");
+  }
 
   await sendDirectSms({
     to: order.phoneNumber,
-    body: originalMessage,
+    body: original.bodySent,
     orderId: order.id,
     templateKey: "order_paminnelse",
   });
@@ -55,6 +61,9 @@ export async function sendOrderReminder(orderId: string) {
  * måste tas bort innan beställningsraden själv kan raderas.
  */
 export async function deleteOrder(orderId: string) {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, select: { id: true } });
+  if (!order) return; // redan borttagen (t.ex. dubbelklick) — inget att göra
+
   await prisma.messageLog.deleteMany({ where: { orderId } });
   await prisma.order.delete({ where: { id: orderId } });
 

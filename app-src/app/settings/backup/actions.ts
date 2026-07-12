@@ -5,6 +5,7 @@ import {
   setExternalBackupDir,
   testExternalBackupDir,
   runBackupNow,
+  setAutoBackupEnabled,
   type ExternalBackupStatus,
 } from "@/lib/backup";
 
@@ -49,4 +50,10 @@ export async function triggerBackupNow(): Promise<RunBackupNowResult> {
   const result = await runBackupNow();
   revalidatePath("/settings/backup");
   return result;
+}
+
+export async function updateAutoBackupEnabled(enabled: boolean): Promise<void> {
+  await setAutoBackupEnabled(enabled);
+  revalidatePath("/settings/backup");
+  revalidatePath("/", "layout");
 }

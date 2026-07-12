@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UnlinkMachineButton } from "@/components/unlink-machine-button";
+import { CopyButton } from "@/components/copy-button";
 import { Breadcrumbs, type BreadcrumbItem } from "@/components/breadcrumbs";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +56,10 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
             </Badge>
             <h1 className="text-2xl font-semibold">{machine.model.modelName}</h1>
           </div>
-          <p className="text-muted-foreground mt-1">Serienr: {machine.serialNumber}</p>
+          <p className="text-muted-foreground mt-1 inline-flex items-center gap-1">
+            Serienr: {machine.serialNumber}
+            <CopyButton value={machine.serialNumber} copiedMessage="Serienummer kopierat" ariaLabel="Kopiera serienummer" />
+          </p>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
           <Button

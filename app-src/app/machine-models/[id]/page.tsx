@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { CopyButton } from "@/components/copy-button";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +99,14 @@ export default async function MachineModelDetailPage({ params }: { params: Promi
                   href={`/machines/${m.id}`}
                   className="block rounded-md border p-3 text-sm hover:bg-muted"
                 >
-                  <div className="font-medium">{m.serialNumber}</div>
+                  <div className="font-medium inline-flex items-center gap-1">
+                    {m.serialNumber}
+                    <CopyButton
+                      value={m.serialNumber}
+                      copiedMessage="Serienummer kopierat"
+                      ariaLabel="Kopiera serienummer"
+                    />
+                  </div>
                   <div className="text-muted-foreground">
                     {owner ? customerLabel(owner) : "Ingen ägare"}
                     {owner?.phone && ` · ${owner.phone}`}

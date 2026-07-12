@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SortHeaderButton } from "@/components/sort-header";
+import { CopyButton } from "@/components/copy-button";
 import { Pencil } from "lucide-react";
 
 export interface MachineRow {
@@ -108,9 +109,12 @@ export function MachinesTable({ machines }: { machines: MachineRow[] }) {
         {sorted.map((m) => (
           <TableRow key={m.id}>
             <TableCell>
-              <Link href={`/machines/${m.id}`} className="hover:underline font-medium">
-                {m.serialNumber}
-              </Link>
+              <span className="inline-flex items-center gap-1">
+                <Link href={`/machines/${m.id}`} className="hover:underline font-medium">
+                  {m.serialNumber}
+                </Link>
+                <CopyButton value={m.serialNumber} copiedMessage="Serienummer kopierat" ariaLabel="Kopiera serienummer" />
+              </span>
             </TableCell>
             <TableCell className="text-muted-foreground">{m.category ?? "—"}</TableCell>
             <TableCell>

@@ -7,8 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { AnonymizeCustomerButton } from "@/components/anonymize-customer-button";
 import { MessageLogTable } from "@/components/message-log-table";
 import { MailtoLink } from "@/components/mailto-link";
+import { CopyButton } from "@/components/copy-button";
 import { CustomerNotesCard } from "@/components/customer-notes-card";
+import { CustomerCampaignSheetCard } from "@/components/customer-campaign-sheet-card";
 import { getResendEligibility } from "@/lib/messaging/resend";
+import { getCompanyProfile } from "@/lib/companyProfile";
 import { Pencil, Printer } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -22,32 +25,47 @@ const SERVICE_STATUS_LABEL: Record<string, string> = {
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const customer = await prisma.customer.findUnique({
-    where: { id },
-    include: {
-      ownerships: {
-        orderBy: { ownedFrom: "desc" },
-        include: {
-          machine: {
-            include: {
-              model: true,
-              messageLogs: {
-                where: { legalBasis: "service_reminder" },
-                orderBy: { createdAt: "desc" },
-                take: 1,
+  const [customer, campaignSheetTemplates, company] = await Promise.all([
+    prisma.customer.findUnique({
+      where: { id },
+      include: {
+        ownerships: {
+          orderBy: { ownedFrom: "desc" },
+          include: {
+            machine: {
+              include: {
+                model: true,
+                messageLogs: {
+                  where: { legalBasis: "service_reminder" },
+                  orderBy: { createdAt: "desc" },
+                  take: 1,
+                },
               },
             },
           },
         },
+        messageLogs: { orderBy: { createdAt: "desc" }, include: { retries: { select: { id: true } } } },
       },
-      messageLogs: { orderBy: { createdAt: "desc" }, include: { retries: { select: { id: true } } } },
-    },
-  });
+    }),
+    prisma.messageTemplate.findMany({
+      where: { legalBasis: "campaign_sheet", isActive: true },
+      select: { key: true, body: true },
+      orderBy: { key: "asc" },
+    }),
+    getCompanyProfile(),
+  ]);
 
   if (!customer) notFound();
 
   const activeOwnerships = customer.ownerships.filter((o) => o.ownedUntil === null);
   const pastOwnerships = customer.ownerships.filter((o) => o.ownedUntil !== null);
+  const campaignSheetMachines = activeOwnerships
+    .filter((o) => o.machine.offersPickupService)
+    .map((o) => ({
+      id: o.machine.id,
+      label: `${o.machine.model.manufacturer} ${o.machine.model.modelName}`,
+      serialNumber: o.machine.serialNumber,
+    }));
 
   return (
     <div className="space-y-6">
@@ -138,7 +156,14 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                     <div className="font-medium">
                       {o.machine.model.manufacturer} {o.machine.model.modelName}
                     </div>
-                    <div className="text-muted-foreground">Serienr: {o.machine.serialNumber}</div>
+                    <div className="text-muted-foreground inline-flex items-center gap-1">
+                      Serienr: {o.machine.serialNumber}
+                      <CopyButton
+                        value={o.machine.serialNumber}
+                        copiedMessage="Serienummer kopierat"
+                        ariaLabel="Kopiera serienummer"
+                      />
+                    </div>
                     <div className="text-muted-foreground text-xs mt-1">
                       Senaste service-utskick:{" "}
                       {lastReminder
@@ -206,6 +231,17 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       </div>
 
       <CustomerNotesCard customerId={customer.id} notes={customer.notes ?? ""} />
+
+      {!customer.isDeleted && (
+        <CustomerCampaignSheetCard
+          customerName={customer.name}
+          hasEmail={!!customer.email}
+          hasConsent={customer.marketingConsent}
+          shopName={company.companyName || "Verkstaden"}
+          machines={campaignSheetMachines}
+          templates={campaignSheetTemplates}
+        />
+      )}
 
       <Card>
         <CardHeader>

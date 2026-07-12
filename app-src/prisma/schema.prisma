@@ -14,6 +14,7 @@ datasource db {
 
 model Customer {
   id                 String    @id @default(cuid())
+  externalCronaId    String?   @unique @map("external_crona_id") // kundnummer från Crona, för återkommande import
   name               String // kontaktperson
   company            String?
   phone              String?

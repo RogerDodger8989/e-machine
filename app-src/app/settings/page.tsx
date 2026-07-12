@@ -101,6 +101,19 @@ export default async function SettingsPage() {
           <Button variant="outline" nativeButton={false} render={<Link href="/settings/backup">Hantera backup</Link>} />
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Importera data</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Importera kunder från Crona, maskinägande från Crona, samt registrerade garantiprodukter
+            från Stiga och Stihl.
+          </p>
+          <Button variant="outline" nativeButton={false} render={<Link href="/settings/import">Importera data</Link>} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

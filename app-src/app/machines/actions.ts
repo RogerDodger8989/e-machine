@@ -7,6 +7,7 @@ import { addMonths } from "@/lib/date";
 import { CUSTOM_WARRANTY_VALUE } from "@/lib/warranty";
 import { resolveCategoryId } from "@/lib/categories";
 import { NEW_MODEL_SENTINEL } from "@/lib/machineModels";
+import { findOrCreateMachineModel, assertSerialNumberAvailable } from "@/lib/machineMatching";
 
 /** Garantitiden väljs antingen som ett antal år (1/2/3/5/10) räknat från
  * inköpsdatum, eller som ett eget datum ("Eget datum" i Select:et) — då
@@ -47,27 +48,11 @@ async function resolveModelId(formData: FormData): Promise<string> {
   const standardWarrantyMonths = Number(formData.get("standardWarrantyMonths") ?? 24);
   const standardServiceIntervalMonths = Number(formData.get("standardServiceIntervalMonths") ?? 12);
 
-  // SQLite stödjer inte case-insensitive matchning direkt — jämför i JS.
-  // Matchar tillverkare+modellnamn (oavsett skiftläge) mot en befintlig
-  // modell och återanvänder den istället för att skapa en dublett.
-  const existing = await prisma.machineModel.findMany({ where: { manufacturer }, select: { id: true, modelName: true } });
-  const match = existing.find((m) => m.modelName.toLowerCase() === modelName.toLowerCase());
-  if (match) return match.id;
-
-  const model = await prisma.machineModel.create({
-    data: { manufacturer, modelName, categoryId, standardWarrantyMonths, standardServiceIntervalMonths },
+  return findOrCreateMachineModel(manufacturer, modelName, {
+    categoryId,
+    standardWarrantyMonths,
+    standardServiceIntervalMonths,
   });
-  return model.id;
-}
-
-// SQLite stödjer inte case-insensitive matchning direkt — jämför i JS,
-// samma mönster som app/settings/categories/actions.ts.
-async function assertSerialNumberAvailable(serialNumber: string, excludeId?: string) {
-  const existing = await prisma.machine.findMany({ select: { id: true, serialNumber: true } });
-  const clash = existing.find(
-    (m) => m.serialNumber.toLowerCase() === serialNumber.toLowerCase() && m.id !== excludeId
-  );
-  if (clash) throw new Error(`Serienumret "${serialNumber}" finns redan registrerat`);
 }
 
 export async function createMachine(formData: FormData) {

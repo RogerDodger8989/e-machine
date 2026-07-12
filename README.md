@@ -106,3 +106,4 @@ Sol-/månikonen i headern växlar mellan ljust och mörkt läge. Valet sparas i 
 - Appen är portabel — den bundlar sin egen Node.js-körmiljö, så inget behöver installeras separat på datorn för att den ska fungera.
 - Databasen är en lokal SQLite-fil som sparas i programmets `data`-mapp, tillsammans med automatiska backuper.
 - Servern binder till alla nätverksgränssnitt på port `3500`, så den går att nå från andra enheter i samma nätverk (se "Nätverksåtkomst" ovan).
+- **Avinstallera** via Start-menyn ("Avinstallera e-Machines") eller Windows Inställningar → Appar. Avinstalleraren frågar om kundregistret och backuperna ska tas bort också — svarar man Nej sparas `data`-mappen kvar på disken (t.ex. inför en ominstallation).

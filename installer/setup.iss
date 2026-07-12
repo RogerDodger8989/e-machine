@@ -51,6 +51,35 @@ Filename: "wscript.exe"; Parameters: """{app}\launcher.vbs"""; Description: "Sta
 Filename: "wscript.exe"; Parameters: """{app}\stop.vbs"""; Flags: runhidden
 Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""e-Machines"""; Flags: runhidden
 
-; OBS: data\ (kunddatabasen + backuper) tas INTE bort vid avinstallation,
-; eftersom Inno Setup bara rensar filer som installerades av [Files] — inte
-; filer som skapats av appen vid körning. Detta är avsiktligt.
+; OBS: data\ (kunddatabasen + backuper) och run\ skapas av appen vid körning,
+; inte av [Files] — Inno Setups vanliga avinstallation rör dem aldrig
+; automatiskt. run\ (bara en pid-fil) städas alltid bort tyst nedan, men
+; data\ raderas bara om användaren uttryckligen svarar Ja på frågan i
+; CurUninstallStepChanged — annars sparas kundregistret och backuperna kvar.
+
+[Code]
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  DataDir, RunDir: String;
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    DataDir := ExpandConstant('{app}') + '\data';
+    RunDir := ExpandConstant('{app}') + '\run';
+
+    if DirExists(DataDir) then
+    begin
+      if SuppressibleMsgBox(
+        'Vill du även ta bort kundregistret och alla backuper (mappen "data")?' + #13#10 + #13#10 +
+        'Detta raderar all kunddata permanent och går INTE att ångra. Svara Nej om du vill spara ' +
+        'datan (t.ex. inför en ominstallation) eller ta en egen säkerhetskopia av mappen först.',
+        mbConfirmation, MB_YESNO, IDNO) = IDYES then
+      begin
+        DelTree(DataDir, True, True, True);
+      end;
+    end;
+
+    if DirExists(RunDir) then
+      DelTree(RunDir, True, True, True);
+  end;
+end;

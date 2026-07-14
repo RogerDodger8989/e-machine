@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { addMonths } from "@/lib/date";
 import { CUSTOM_WARRANTY_VALUE } from "@/lib/warranty";
 import { resolveCategoryId } from "@/lib/categories";
+import { parseOptionalMonths } from "@/lib/serviceInterval";
 import { NEW_MODEL_SENTINEL } from "@/lib/machineModels";
 import { findOrCreateMachineModel, assertSerialNumberAvailable } from "@/lib/machineMatching";
 
@@ -29,6 +30,21 @@ function resolveWarrantyEndDate(
   return addMonths(purchaseDate, Number(warrantyYearsRaw) * 12);
 }
 
+/** <ManufacturerPicker> skickar antingen ett id på en befintlig tillverkare
+ * eller ett nytt namn — findOrCreateMachineModel() vill ha ett namn (samma
+ * signatur som importflödena redan använder), så vi löser ut det här. */
+async function resolveManufacturerName(formData: FormData): Promise<string> {
+  const manufacturerId = String(formData.get("manufacturerId") ?? "").trim();
+  if (manufacturerId) {
+    const manufacturer = await prisma.manufacturer.findUnique({ where: { id: manufacturerId }, select: { name: true } });
+    if (!manufacturer) throw new Error("Tillverkaren hittades inte");
+    return manufacturer.name;
+  }
+  const newName = String(formData.get("newManufacturerName") ?? "").trim();
+  if (!newName) throw new Error("Tillverkare krävs");
+  return newName;
+}
+
 /** Om modell-Select:et står på "+ Ny modell…" skapas modellen (eller
  * återanvänds om tillverkare+modellnamn redan finns) från de fält som
  * `<ModelPicker>` skickar med, istället för att kräva ett separat besök på
@@ -37,21 +53,22 @@ async function resolveModelId(formData: FormData): Promise<string> {
   const modelId = String(formData.get("modelId") ?? "");
   if (modelId && modelId !== NEW_MODEL_SENTINEL) return modelId;
 
-  const manufacturer = String(formData.get("manufacturer") ?? "");
+  const manufacturer = await resolveManufacturerName(formData);
   const modelName = String(formData.get("modelName") ?? "").trim();
-  if (manufacturer !== "Stiga" && manufacturer !== "Stihl") {
-    throw new Error("Tillverkare måste vara Stiga eller Stihl");
-  }
   if (!modelName) throw new Error("Modellnamn krävs för ny modell");
 
   const categoryId = await resolveCategoryId(formData);
   const standardWarrantyMonths = Number(formData.get("standardWarrantyMonths") ?? 24);
-  const standardServiceIntervalMonths = Number(formData.get("standardServiceIntervalMonths") ?? 12);
+  // Tomt fält = ärv kategorins standardintervall (lib/serviceInterval.ts),
+  // inte 12 — endast ett ifyllt värde ska bli en explicit överstyrning.
+  const standardServiceIntervalMonths = parseOptionalMonths(formData, "standardServiceIntervalMonths");
+  const firstServiceIntervalMonths = parseOptionalMonths(formData, "firstServiceIntervalMonths");
 
   return findOrCreateMachineModel(manufacturer, modelName, {
     categoryId,
     standardWarrantyMonths,
     standardServiceIntervalMonths,
+    firstServiceIntervalMonths,
   });
 }
 
@@ -70,7 +87,6 @@ export async function createMachine(formData: FormData) {
   const modelId = await resolveModelId(formData);
   const purchaseDate = purchaseDateRaw ? new Date(purchaseDateRaw) : null;
   const warrantyEndDate = resolveWarrantyEndDate(warrantyYearsRaw, purchaseDate, warrantyEndDateRaw);
-  const offersPickupService = formData.get("offersPickupService") === "on";
 
   const machine = await prisma.machine.create({
     data: {
@@ -78,7 +94,6 @@ export async function createMachine(formData: FormData) {
       serialNumber,
       purchaseDate,
       warrantyEndDate,
-      offersPickupService,
       ownerships: {
         create: { customerId },
       },
@@ -106,7 +121,6 @@ export async function updateMachine(machineId: string, formData: FormData) {
 
   const purchaseDate = purchaseDateRaw ? new Date(purchaseDateRaw) : null;
   const warrantyEndDate = resolveWarrantyEndDate(warrantyYearsRaw, purchaseDate, warrantyEndDateRaw);
-  const offersPickupService = formData.get("offersPickupService") === "on";
 
   await prisma.machine.update({
     where: { id: machineId },
@@ -116,7 +130,6 @@ export async function updateMachine(machineId: string, formData: FormData) {
       purchaseDate,
       warrantyEndDate,
       notes,
-      offersPickupService,
     },
   });
 

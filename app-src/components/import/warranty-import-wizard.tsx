@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileUploadStep } from "@/components/import/file-upload-step";
 import { ColumnMapper } from "@/components/import/column-mapper";
 import { ImportPreviewTable, type PreviewRow } from "@/components/import/import-preview-table";
@@ -12,10 +13,9 @@ import type { ParsedSpreadsheet } from "@/lib/import/parseSpreadsheet";
 import { previewWarrantyImport, commitWarrantyImport, type CommitWarrantyImportResult } from "@/app/settings/import/warranty/actions";
 
 type Step = "upload" | "map" | "preview" | "done";
-type Manufacturer = "Stiga" | "Stihl";
 
-export function WarrantyImportWizard() {
-  const [manufacturer, setManufacturer] = useState<Manufacturer>("Stiga");
+export function WarrantyImportWizard({ manufacturers }: { manufacturers: { id: string; name: string }[] }) {
+  const [manufacturer, setManufacturer] = useState<string>(manufacturers[0]?.name ?? "");
   const [step, setStep] = useState<Step>("upload");
   const [parsed, setParsed] = useState<ParsedSpreadsheet | null>(null);
   const [fileName, setFileName] = useState<string>("");
@@ -81,24 +81,29 @@ export function WarrantyImportWizard() {
       <CardContent className="space-y-4">
         <div className="space-y-1.5">
           <p className="text-sm font-medium">Tillverkare</p>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={manufacturer === "Stiga" ? "default" : "outline"}
-              onClick={() => setManufacturer("Stiga")}
+          {manufacturers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Inga tillverkare finns ännu — skapa en under Inställningar → Tillverkare.
+            </p>
+          ) : (
+            <Select
+              value={manufacturer}
+              onValueChange={(v) => v && setManufacturer(v)}
               disabled={step !== "upload"}
+              items={Object.fromEntries(manufacturers.map((m) => [m.name, m.name]))}
             >
-              Stiga
-            </Button>
-            <Button
-              type="button"
-              variant={manufacturer === "Stihl" ? "default" : "outline"}
-              onClick={() => setManufacturer("Stihl")}
-              disabled={step !== "upload"}
-            >
-              Stihl
-            </Button>
-          </div>
+              <SelectTrigger className="w-full sm:w-64">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {manufacturers.map((m) => (
+                  <SelectItem key={m.id} value={m.name}>
+                    {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {step === "upload" && <FileUploadStep onParsed={handleParsed} />}

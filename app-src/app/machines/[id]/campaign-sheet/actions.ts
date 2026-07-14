@@ -7,7 +7,7 @@ export async function sendCampaignSheetEmail(machineId: string, templateKey: str
   const machine = await prisma.machine.findUnique({
     where: { id: machineId },
     include: {
-      model: true,
+      model: { include: { manufacturer: true } },
       ownerships: { where: { ownedUntil: null }, include: { customer: true } },
     },
   });
@@ -21,7 +21,7 @@ export async function sendCampaignSheetEmail(machineId: string, templateKey: str
     machineId: machine.id,
     variables: {
       customer_name: owner.name,
-      model_name: `${machine.model.manufacturer} ${machine.model.modelName}`,
+      model_name: `${machine.model.manufacturer.name} ${machine.model.modelName}`,
       serial_number: machine.serialNumber,
     },
   });

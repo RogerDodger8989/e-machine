@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CopyButton } from "@/components/copy-button";
+import { resolveServiceIntervals } from "@/lib/serviceInterval";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function MachineModelDetailPage({ params }: { params: Promi
     where: { id },
     include: {
       category: true,
+      manufacturer: true,
       machines: {
         orderBy: { createdAt: "desc" },
         include: {
@@ -29,25 +31,28 @@ export default async function MachineModelDetailPage({ params }: { params: Promi
           },
         },
       },
+      campaignSheetLinks: { include: { template: true }, orderBy: { template: { key: "asc" } } },
     },
   });
 
   if (!model) notFound();
+
+  const { recurringMonths, firstMonths } = resolveServiceIntervals(model, model.category);
+  const recurringIsInherited = model.standardServiceIntervalMonths === null;
+  const firstIsInherited = model.firstServiceIntervalMonths === null;
 
   return (
     <div className="space-y-6">
       <Breadcrumbs
         items={[
           { label: "Modeller", href: "/machine-models" },
-          { label: `${model.manufacturer} ${model.modelName}`, href: `/machine-models/${model.id}` },
+          { label: `${model.manufacturer.name} ${model.modelName}`, href: `/machine-models/${model.id}` },
         ]}
       />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <Badge variant={model.manufacturer === "Stiga" ? "default" : "secondary"}>
-              {model.manufacturer}
-            </Badge>
+            <Badge variant="secondary">{model.manufacturer.name}</Badge>
             <h1 className="text-2xl font-semibold">{model.modelName}</h1>
           </div>
           {model.category && <p className="text-muted-foreground mt-1">{model.category.name}</p>}
@@ -72,8 +77,43 @@ export default async function MachineModelDetailPage({ params }: { params: Promi
             </div>
             <div>
               <span className="text-muted-foreground">Serviceintervall: </span>
-              {model.standardServiceIntervalMonths} månader
+              {recurringMonths} månader{recurringIsInherited && " (ärvt från kategori)"}
             </div>
+            {firstMonths !== recurringMonths && (
+              <div>
+                <span className="text-muted-foreground">Första servicen: </span>
+                {firstMonths} månader{firstIsInherited && " (ärvt från kategori)"}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Kampanjblad ({model.campaignSheetLinks.length})</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={`/machine-models/${model.id}/edit`}>Redigera</Link>}
+            />
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {model.campaignSheetLinks.length === 0 ? (
+              <p className="text-muted-foreground">
+                Inga kampanjblad kopplade — maskiner av denna modell visar ingen
+                &quot;Skriv ut kampanjblad&quot;-knapp.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {model.campaignSheetLinks.map((l) => (
+                  <li key={l.id} className="flex items-center gap-2">
+                    {l.template.key}
+                    {!l.template.isActive && <Badge variant="secondary">Inaktiv</Badge>}
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
 

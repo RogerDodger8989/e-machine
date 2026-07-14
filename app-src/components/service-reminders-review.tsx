@@ -6,8 +6,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AudienceFilterControls } from "@/components/audience-filters";
+import { EMPTY_AUDIENCE_FILTER, isAudienceFilterActive, matchesAudienceFilter, type AudienceFilterValue } from "@/lib/audienceFilter";
+import type { AudienceFilterOptions } from "@/lib/audienceBuilder";
 import type { DueServiceReminder } from "@/lib/jobs/serviceReminders";
-import { sendServiceReminders, type ReminderChannel } from "@/app/settings/service-reminders/actions";
+import { sendServiceReminders, type ReminderChannel } from "@/app/messages/service/actions";
 
 function customerLabel(r: DueServiceReminder): string {
   return r.company ? `${r.company} - ${r.customerName}` : r.customerName;
@@ -17,21 +20,34 @@ export function ServiceRemindersReview({
   reminders,
   smsAvailable,
   emailAvailable,
+  filterOptions,
 }: {
   reminders: DueServiceReminder[];
   smsAvailable: boolean;
   emailAvailable: boolean;
+  filterOptions: AudienceFilterOptions;
 }) {
+  const [filters, setFilters] = useState<AudienceFilterValue>(EMPTY_AUDIENCE_FILTER);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sendSms, setSendSms] = useState(smsAvailable);
   const [sendEmail, setSendEmail] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<string | null>(null);
 
-  const allSelected = reminders.length > 0 && selected.size === reminders.length;
+  const filteredReminders = useMemo(() => {
+    if (!isAudienceFilterActive(filters)) return reminders;
+    return reminders.filter((r) => matchesAudienceFilter(r, filters));
+  }, [reminders, filters]);
+
+  const allSelected = filteredReminders.length > 0 && filteredReminders.every((r) => selected.has(r.machineId));
 
   function toggleAll() {
-    setSelected(allSelected ? new Set() : new Set(reminders.map((r) => r.machineId)));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allSelected) filteredReminders.forEach((r) => next.delete(r.machineId));
+      else filteredReminders.forEach((r) => next.add(r.machineId));
+      return next;
+    });
   }
 
   function toggleOne(machineId: string) {
@@ -67,6 +83,8 @@ export function ServiceRemindersReview({
 
   return (
     <div className="space-y-4">
+      <AudienceFilterControls value={filters} onChange={setFilters} {...filterOptions} />
+
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -82,7 +100,14 @@ export function ServiceRemindersReview({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {reminders.map((r) => (
+              {filteredReminders.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    Inga maskiner matchar filtret.
+                  </TableCell>
+                </TableRow>
+              )}
+              {filteredReminders.map((r) => (
                 <TableRow key={r.machineId}>
                   <TableCell>
                     <Checkbox

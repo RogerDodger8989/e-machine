@@ -4,12 +4,13 @@ import { prisma } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AnonymizeCustomerButton } from "@/components/anonymize-customer-button";
 import { MessageLogTable } from "@/components/message-log-table";
 import { MailtoLink } from "@/components/mailto-link";
 import { CopyButton } from "@/components/copy-button";
 import { CustomerNotesCard } from "@/components/customer-notes-card";
-import { CustomerCampaignSheetCard } from "@/components/customer-campaign-sheet-card";
+import { CustomerSendCard } from "@/components/customer-send-card";
 import { getResendEligibility } from "@/lib/messaging/resend";
 import { getCompanyProfile } from "@/lib/companyProfile";
 import { Pencil, Printer } from "lucide-react";
@@ -25,7 +26,7 @@ const SERVICE_STATUS_LABEL: Record<string, string> = {
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [customer, campaignSheetTemplates, company] = await Promise.all([
+  const [customer, sendableTemplates, company] = await Promise.all([
     prisma.customer.findUnique({
       where: { id },
       include: {
@@ -34,7 +35,15 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           include: {
             machine: {
               include: {
-                model: true,
+                model: {
+                  include: {
+                    manufacturer: true,
+                    campaignSheetLinks: {
+                      where: { template: { isActive: true } },
+                      select: { template: { select: { key: true } } },
+                    },
+                  },
+                },
                 messageLogs: {
                   where: { legalBasis: "service_reminder" },
                   orderBy: { createdAt: "desc" },
@@ -48,9 +57,9 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       },
     }),
     prisma.messageTemplate.findMany({
-      where: { legalBasis: "campaign_sheet", isActive: true },
-      select: { key: true, body: true },
-      orderBy: { key: "asc" },
+      where: { legalBasis: { in: ["marketing", "campaign_sheet"] }, isActive: true },
+      select: { key: true, legalBasis: true, body: true },
+      orderBy: [{ legalBasis: "asc" }, { key: "asc" }],
     }),
     getCompanyProfile(),
   ]);
@@ -59,13 +68,11 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
   const activeOwnerships = customer.ownerships.filter((o) => o.ownedUntil === null);
   const pastOwnerships = customer.ownerships.filter((o) => o.ownedUntil !== null);
-  const campaignSheetMachines = activeOwnerships
-    .filter((o) => o.machine.offersPickupService)
-    .map((o) => ({
-      id: o.machine.id,
-      label: `${o.machine.model.manufacturer} ${o.machine.model.modelName}`,
-      serialNumber: o.machine.serialNumber,
-    }));
+  const sendableMachines = activeOwnerships.map((o) => ({
+    id: o.machine.id,
+    label: `${o.machine.model.manufacturer.name} ${o.machine.model.modelName}`,
+    serialNumber: o.machine.serialNumber,
+  }));
 
   return (
     <div className="space-y-6">
@@ -154,7 +161,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                 >
                   <Link href={`/machines/${o.machine.id}`} className="flex-1">
                     <div className="font-medium">
-                      {o.machine.model.manufacturer} {o.machine.model.modelName}
+                      {o.machine.model.manufacturer.name} {o.machine.model.modelName}
                     </div>
                     <div className="text-muted-foreground inline-flex items-center gap-1">
                       Serienr: {o.machine.serialNumber}
@@ -180,21 +187,27 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                       {o.machine.warrantyEndDate ? o.machine.warrantyEndDate.toLocaleDateString("sv-SE") : "—"}
                     </div>
                     <div className="flex justify-end gap-1">
-                      {o.machine.offersPickupService && (
-                        <Button
-                          variant="outline"
-                          size="icon-sm"
-                          nativeButton={false}
-                          render={
-                            <Link
-                              href={`/machines/${o.machine.id}/campaign-sheet`}
-                              title="Skriv ut kampanjblad"
-                              aria-label="Skriv ut kampanjblad"
-                            >
-                              <Printer />
-                            </Link>
-                          }
-                        />
+                      {o.machine.model.campaignSheetLinks.length > 0 && (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                variant="outline"
+                                size="icon-sm"
+                                nativeButton={false}
+                                render={
+                                  <Link href={`/machines/${o.machine.id}/campaign-sheet`} aria-label="Skriv ut kampanjblad">
+                                    <Printer />
+                                  </Link>
+                                }
+                              />
+                            }
+                          />
+                          <TooltipContent>
+                            Skriv ut kampanjblad:{" "}
+                            {o.machine.model.campaignSheetLinks.map((l) => l.template.key).join(", ")}
+                          </TooltipContent>
+                        </Tooltip>
                       )}
                       <Button
                         variant="outline"
@@ -219,7 +232,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                 <div className="mt-2 space-y-2">
                   {pastOwnerships.map((o) => (
                     <div key={o.id} className="rounded-md border p-2">
-                      {o.machine.model.manufacturer} {o.machine.model.modelName} —{" "}
+                      {o.machine.model.manufacturer.name} {o.machine.model.modelName} —{" "}
                       {o.machine.serialNumber} ({o.unlinkReason ?? "frikopplad"})
                     </div>
                   ))}
@@ -233,13 +246,14 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       <CustomerNotesCard customerId={customer.id} notes={customer.notes ?? ""} />
 
       {!customer.isDeleted && (
-        <CustomerCampaignSheetCard
+        <CustomerSendCard
+          customerId={customer.id}
           customerName={customer.name}
           hasEmail={!!customer.email}
           hasConsent={customer.marketingConsent}
           shopName={company.companyName || "Verkstaden"}
-          machines={campaignSheetMachines}
-          templates={campaignSheetTemplates}
+          machines={sendableMachines}
+          templates={sendableTemplates}
         />
       )}
 

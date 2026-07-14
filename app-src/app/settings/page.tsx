@@ -29,19 +29,6 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Kampanjblad</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Skapa flera olika kampanjblad (t.ex. hämt-/lämnerbjudande, säsongskampanjer) — skrivs ut
-            per maskin, eller mailas till en enskild kund eller flera på en gång.
-          </p>
-          <Button variant="outline" nativeButton={false} render={<Link href="/settings/campaign-sheet">Hantera kampanjblad</Link>} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Mallar för utskick</CardTitle>
         </CardHeader>
         <CardContent>
@@ -51,44 +38,15 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Utskick</CardTitle>
+          <CardTitle>E-post & SMS-anslutning</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
             Konfigurera 46elks (SMS) och Mailercloud (e-post) för att kunna skicka
-            servicepåminnelser och kampanjer.
+            servicepåminnelser och kampanjer. Själva utskicken (kampanjer, kampanjblad,
+            servicepåminnelser) sköts under Utskick i huvudmenyn.
           </p>
-          <Button variant="outline" nativeButton={false} render={<Link href="/settings/messaging">Konfigurera utskick</Link>} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Servicepåminnelser</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Granska vilka kunder som är aktuella för en påminnelse just nu, välj vilka
-            och vilken kanal (SMS/e-post) innan något skickas — inget skickas automatiskt.
-          </p>
-          <Button
-            variant="outline"
-            nativeButton={false}
-            render={<Link href="/settings/service-reminders">Visa aktuella påminnelser</Link>}
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Kampanjer</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Skicka ett eget manuellt utskick (t.ex. en säsongskampanj) till valda kunder
-            som lämnat samtycke.
-          </p>
-          <Button variant="outline" nativeButton={false} render={<Link href="/settings/campaigns">Skicka kampanj</Link>} />
+          <Button variant="outline" nativeButton={false} render={<Link href="/settings/messaging">Konfigurera anslutning</Link>} />
         </CardContent>
       </Card>
 
@@ -99,9 +57,23 @@ export default async function SettingsPage() {
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
             Hantera kategorier för maskinmodeller (t.ex. &quot;Gräsklippare&quot;,
-            &quot;Motorsåg&quot;) — lägg till, döp om eller ta bort.
+            &quot;Motorsåg&quot;, &quot;Cyklar&quot;) — lägg till, döp om eller ta bort. Standard-
+            serviceintervall (inkl. första service) sätts också per kategori här.
           </p>
           <Button variant="outline" nativeButton={false} render={<Link href="/settings/categories">Hantera kategorier</Link>} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tillverkare</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Hantera tillverkare (t.ex. &quot;Stiga&quot;, &quot;Stihl&quot;, ett cykelmärke) —
+            lägg till, döp om eller ta bort.
+          </p>
+          <Button variant="outline" nativeButton={false} render={<Link href="/settings/manufacturers">Hantera tillverkare</Link>} />
         </CardContent>
       </Card>
 

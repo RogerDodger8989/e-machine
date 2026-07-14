@@ -11,8 +11,10 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_ITEMS = [
   { href: "/customers", label: "Kunder" },
-  { href: "/machines", label: "Maskiner" },
-  { href: "/machine-models", label: "Modeller" },
+  // Maskiner-fliken täcker även /machine-models (Modeller flyttade in som en
+  // underflik dit istället för att vara ett eget toppobjekt) — matchas
+  // explicit här så toppfliken förblir markerad på båda underflikarna.
+  { href: "/machines", label: "Maskiner", activeMatch: ["/machines", "/machine-models"] },
   { href: "/sms", label: "Sms" },
   { href: "/statistik", label: "Statistik" },
   { href: "/messages", label: "Utskick" },
@@ -36,7 +38,8 @@ export function AppNav({
         </Link>
         <nav className="flex flex-nowrap gap-0.5 text-sm shrink-0 overflow-x-auto sm:overflow-visible -mx-1 px-1 sm:mx-0 sm:px-0">
           {NAV_ITEMS.map((item) => {
-            const active = pathname.startsWith(item.href);
+            const matches = item.activeMatch ?? [item.href];
+            const active = matches.some((m) => pathname.startsWith(m));
             return (
               <Link
                 key={item.href}

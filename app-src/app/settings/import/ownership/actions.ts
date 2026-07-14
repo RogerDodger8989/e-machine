@@ -14,7 +14,7 @@ interface OwnershipPlanRow extends PreviewRow {
   action: OwnershipAction;
   serialNumber: string;
   customerId: string | null;
-  manufacturer: "Stiga" | "Stihl" | null;
+  manufacturer: string | null;
   modelName: string | null;
 }
 

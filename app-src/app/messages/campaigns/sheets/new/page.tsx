@@ -5,16 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TemplateVariableReference } from "@/components/template-variable-reference";
-import { createCampaignSheetTemplate } from "@/app/settings/campaign-sheet/actions";
+import { createCampaignSheetTemplate } from "@/app/messages/campaigns/sheets/actions";
 
 export default function NewCampaignSheetPage() {
   return (
     <div className="max-w-xl space-y-4">
       <Breadcrumbs
         items={[
-          { label: "Inställningar", href: "/settings" },
-          { label: "Kampanjblad", href: "/settings/campaign-sheet" },
-          { label: "Nytt kampanjblad", href: "/settings/campaign-sheet/new" },
+          { label: "Kampanj", href: "/messages/campaigns" },
+          { label: "Kampanjblad", href: "/messages/campaigns/sheets" },
+          { label: "Nytt kampanjblad", href: "/messages/campaigns/sheets/new" },
         ]}
       />
       <h1 className="text-2xl font-semibold">Nytt kampanjblad</h1>

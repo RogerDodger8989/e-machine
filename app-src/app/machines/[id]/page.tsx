@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UnlinkMachineButton } from "@/components/unlink-machine-button";
 import { CopyButton } from "@/components/copy-button";
 import { Breadcrumbs, type BreadcrumbItem } from "@/components/breadcrumbs";
@@ -20,7 +21,15 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
   const machine = await prisma.machine.findUnique({
     where: { id },
     include: {
-      model: true,
+      model: {
+        include: {
+          manufacturer: true,
+          campaignSheetLinks: {
+            where: { template: { isActive: true } },
+            select: { template: { select: { key: true } } },
+          },
+        },
+      },
       ownerships: {
         orderBy: { ownedFrom: "desc" },
         include: { customer: true },
@@ -32,6 +41,7 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
 
   const activeOwnership = machine.ownerships.find((o) => o.ownedUntil === null);
   const pastOwnerships = machine.ownerships.filter((o) => o.ownedUntil !== null);
+  const hasCampaignSheet = machine.model.campaignSheetLinks.length > 0;
 
   const breadcrumbItems: BreadcrumbItem[] = [];
   if (activeOwnership) {
@@ -41,7 +51,7 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
     });
   }
   breadcrumbItems.push({
-    label: `${machine.model.manufacturer} ${machine.model.modelName}`,
+    label: `${machine.model.manufacturer.name} ${machine.model.modelName}`,
     href: `/machine-models/${machine.model.id}`,
   });
 
@@ -51,9 +61,7 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <Badge variant={machine.model.manufacturer === "Stiga" ? "default" : "secondary"}>
-              {machine.model.manufacturer}
-            </Badge>
+            <Badge variant="secondary">{machine.model.manufacturer.name}</Badge>
             <h1 className="text-2xl font-semibold">{machine.model.modelName}</h1>
           </div>
           <p className="text-muted-foreground mt-1 inline-flex items-center gap-1">
@@ -67,12 +75,21 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
             nativeButton={false}
             render={<Link href={`/machines/${machine.id}/edit`}>Redigera</Link>}
           />
-          {machine.offersPickupService && activeOwnership && (
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={<Link href={`/machines/${machine.id}/campaign-sheet`}>Skriv ut kampanjblad</Link>}
-            />
+          {hasCampaignSheet && activeOwnership && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    nativeButton={false}
+                    render={<Link href={`/machines/${machine.id}/campaign-sheet`}>Skriv ut kampanjblad</Link>}
+                  />
+                }
+              />
+              <TooltipContent>
+                {machine.model.campaignSheetLinks.map((l) => l.template.key).join(", ")}
+              </TooltipContent>
+            </Tooltip>
           )}
           {activeOwnership && <UnlinkMachineButton machineId={machine.id} />}
         </div>

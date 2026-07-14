@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WARRANTY_YEAR_OPTIONS, WARRANTY_SELECT_ITEMS, CUSTOM_WARRANTY_VALUE, monthsToPresetOrCustom } from "@/lib/warranty";
 
@@ -27,7 +26,6 @@ export function EditMachineForm({
   notes,
   initialWarrantySelection,
   initialWarrantyEndDate,
-  offersPickupService,
 }: {
   machineId: string;
   models: MachineModelOption[];
@@ -37,7 +35,6 @@ export function EditMachineForm({
   notes: string;
   initialWarrantySelection: string;
   initialWarrantyEndDate: string;
-  offersPickupService: boolean;
 }) {
   const [warrantySelection, setWarrantySelection] = useState(initialWarrantySelection);
   const isCustomWarranty = warrantySelection === CUSTOM_WARRANTY_VALUE;
@@ -130,12 +127,6 @@ export function EditMachineForm({
       <div className="space-y-1.5">
         <Label htmlFor="notes">Anteckningar</Label>
         <Textarea id="notes" name="notes" rows={3} defaultValue={notes} />
-      </div>
-      <div className="flex items-center gap-2">
-        <Checkbox id="offersPickupService" name="offersPickupService" defaultChecked={offersPickupService} />
-        <Label htmlFor="offersPickupService" className="font-normal">
-          Erbjuder hämt-/lämnservice (900 kr, kampanjblad)
-        </Label>
       </div>
       <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={isPending}>

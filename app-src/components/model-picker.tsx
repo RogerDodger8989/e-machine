@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CategoryPicker, type CategoryOption } from "@/components/category-picker";
+import { ManufacturerPicker, type ManufacturerOption } from "@/components/manufacturer-picker";
 import { WarrantyMonthsSelect } from "@/components/warranty-months-select";
 import { NEW_MODEL_SENTINEL } from "@/lib/machineModels";
 
@@ -28,11 +29,13 @@ export interface ModelOption {
 export function ModelPicker({
   models,
   categories,
+  manufacturers,
   initialModelId,
   onModelChange,
 }: {
   models: ModelOption[];
   categories: CategoryOption[];
+  manufacturers: ManufacturerOption[];
   initialModelId?: string;
   onModelChange?: (model: ModelOption | null) => void;
 }) {
@@ -88,18 +91,7 @@ export function ModelPicker({
           >
             <p className="text-sm font-medium">Ny maskinmodell</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="manufacturer">Tillverkare *</Label>
-                <Select name="manufacturer" required={isNew} defaultValue="Stiga">
-                  <SelectTrigger id="manufacturer" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Stiga">Stiga</SelectItem>
-                    <SelectItem value="Stihl">Stihl</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <ManufacturerPicker manufacturers={manufacturers} required={isNew} />
               <div className="space-y-1.5">
                 <Label htmlFor="modelName">Modellnamn *</Label>
                 <Input
@@ -111,11 +103,11 @@ export function ModelPicker({
               </div>
             </div>
             <CategoryPicker categories={categories} />
+            <div className="space-y-1.5">
+              <Label htmlFor="standardWarrantyMonths">Standardgaranti *</Label>
+              <WarrantyMonthsSelect defaultMonths={24} required={isNew} />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="standardWarrantyMonths">Standardgaranti *</Label>
-                <WarrantyMonthsSelect defaultMonths={24} required={isNew} />
-              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="standardServiceIntervalMonths">Serviceintervall (mån)</Label>
                 <Input
@@ -123,7 +115,17 @@ export function ModelPicker({
                   name="standardServiceIntervalMonths"
                   type="number"
                   min={1}
-                  defaultValue={12}
+                  placeholder="Ärv från kategori"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="firstServiceIntervalMonths">Första servicen (mån)</Label>
+                <Input
+                  id="firstServiceIntervalMonths"
+                  name="firstServiceIntervalMonths"
+                  type="number"
+                  min={1}
+                  placeholder="Samma som ovan"
                 />
               </div>
             </div>

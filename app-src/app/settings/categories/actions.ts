@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { parseOptionalMonths } from "@/lib/serviceInterval";
 
 // SQLite stödjer inte Prismas `mode: "insensitive"` — jämför case-insensitivt
 // i JS istället (fåtal rader, inget prestandaproblem).
@@ -16,7 +17,12 @@ export async function createCategory(formData: FormData) {
   if (!name) throw new Error("Namn krävs");
   await assertNameAvailable(name);
 
-  await prisma.category.create({ data: { name } });
+  const defaultServiceIntervalMonths = parseOptionalMonths(formData, "defaultServiceIntervalMonths");
+  const defaultFirstServiceIntervalMonths = parseOptionalMonths(formData, "defaultFirstServiceIntervalMonths");
+
+  await prisma.category.create({
+    data: { name, defaultServiceIntervalMonths, defaultFirstServiceIntervalMonths },
+  });
 
   revalidatePath("/settings/categories");
   revalidatePath("/machine-models");
@@ -27,7 +33,13 @@ export async function updateCategory(categoryId: string, formData: FormData) {
   if (!name) throw new Error("Namn krävs");
   await assertNameAvailable(name, categoryId);
 
-  await prisma.category.update({ where: { id: categoryId }, data: { name } });
+  const defaultServiceIntervalMonths = parseOptionalMonths(formData, "defaultServiceIntervalMonths");
+  const defaultFirstServiceIntervalMonths = parseOptionalMonths(formData, "defaultFirstServiceIntervalMonths");
+
+  await prisma.category.update({
+    where: { id: categoryId },
+    data: { name, defaultServiceIntervalMonths, defaultFirstServiceIntervalMonths },
+  });
 
   revalidatePath("/settings/categories");
   revalidatePath("/machine-models");

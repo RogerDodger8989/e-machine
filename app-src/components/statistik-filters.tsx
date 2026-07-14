@@ -33,7 +33,15 @@ const PRESETS: { key: string; label: string; range: { from: string; to: string }
   { key: "lastYear", label: "Föregående år", range: preset("lastYear") },
 ];
 
-export function StatistikFilters({ from, to }: { from: string; to: string }) {
+export function StatistikFilters({
+  from,
+  to,
+  basePath = "/statistik",
+}: {
+  from: string;
+  to: string;
+  basePath?: string;
+}) {
   const router = useRouter();
   const [fromValue, setFromValue] = useState(from);
   const [toValue, setToValue] = useState(to);
@@ -41,7 +49,7 @@ export function StatistikFilters({ from, to }: { from: string; to: string }) {
   const activePreset = PRESETS.find((p) => p.range.from === from && p.range.to === to)?.key;
 
   function apply(nextFrom: string, nextTo: string) {
-    router.push(`/statistik?from=${nextFrom}&to=${nextTo}`);
+    router.push(`${basePath}?from=${nextFrom}&to=${nextTo}`);
   }
 
   return (

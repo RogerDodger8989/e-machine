@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { sendMessage } from "@/lib/messaging/sendMessage";
 import { resolveDueCycle } from "@/lib/jobs/serviceReminders";
+import { resolveServiceIntervals } from "@/lib/serviceInterval";
 import { addMonths } from "@/lib/date";
 
 export type ReminderChannel = "sms" | "email";
@@ -22,7 +23,7 @@ export interface SendServiceRemindersResult {
 
 /**
  * Skickar servicepåminnelser för de valda maskinerna på de valda kanalerna.
- * Görs enbart efter manuell granskning (se app/settings/service-reminders) —
+ * Görs enbart efter manuell granskning (se app/messages/service) —
  * ingen automatisk körning finns längre. Idempotens-kollen här är ett
  * säkerhetsnät (t.ex. om någon skickar samma lista två gånger), inte den
  * primära spärren — det är den mänskliga granskningen.
@@ -37,7 +38,7 @@ export async function sendServiceReminders(
   const machines = await prisma.machine.findMany({
     where: { id: { in: machineIds }, purchaseDate: { not: null } },
     include: {
-      model: true,
+      model: { include: { manufacturer: true, category: true } },
       ownerships: { where: { ownedUntil: null }, include: { customer: true } },
     },
   });
@@ -48,13 +49,15 @@ export async function sendServiceReminders(
     const ownership = machine.ownerships[0];
     if (!ownership || ownership.customer.isDeleted) continue;
 
-    const { nextDueDate } = await resolveDueCycle(
+    const { firstMonths, recurringMonths } = resolveServiceIntervals(machine.model, machine.model.category);
+    const { nextDueDate, cycleLengthMonths } = await resolveDueCycle(
       machine.id,
       machine.purchaseDate!,
-      machine.model.standardServiceIntervalMonths,
+      firstMonths,
+      recurringMonths,
       today
     );
-    const cycleStart = addMonths(nextDueDate, -machine.model.standardServiceIntervalMonths);
+    const cycleStart = addMonths(nextDueDate, -cycleLengthMonths);
 
     for (const channel of channels) {
       // "failed" spärrar inte en förnyad send-knapp-tryckning — bara lyckade
@@ -79,7 +82,7 @@ export async function sendServiceReminders(
         machineId: machine.id,
         variables: {
           customer_name: ownership.customer.name,
-          model_name: `${machine.model.manufacturer} ${machine.model.modelName}`,
+          model_name: `${machine.model.manufacturer.name} ${machine.model.modelName}`,
           serial_number: machine.serialNumber,
         },
       });
@@ -90,7 +93,7 @@ export async function sendServiceReminders(
     }
   }
 
-  revalidatePath("/settings/service-reminders");
+  revalidatePath("/messages/service");
   revalidatePath("/customers");
   return result;
 }

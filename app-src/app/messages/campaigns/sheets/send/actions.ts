@@ -28,7 +28,7 @@ export async function sendCampaignSheetBulk(
   const machines = await prisma.machine.findMany({
     where: { id: { in: machineIds } },
     include: {
-      model: true,
+      model: { include: { manufacturer: true } },
       ownerships: { where: { ownedUntil: null }, include: { customer: true } },
     },
   });
@@ -51,7 +51,7 @@ export async function sendCampaignSheetBulk(
       machineId: machine.id,
       variables: {
         customer_name: owner.name,
-        model_name: `${machine.model.manufacturer} ${machine.model.modelName}`,
+        model_name: `${machine.model.manufacturer.name} ${machine.model.modelName}`,
         serial_number: machine.serialNumber,
       },
     });

@@ -68,12 +68,43 @@ export function CategoryPicker({
         </SelectContent>
       </Select>
       {mode === "new" && (
-        <Input
-          value={newCategory}
-          onChange={(e) => setNewCategory(e.target.value)}
-          placeholder="Namn på ny kategori"
-          autoFocus
-        />
+        <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
+          <Input
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            placeholder="Namn på ny kategori"
+            autoFocus
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="newCategoryServiceIntervalMonths" className="text-xs text-muted-foreground">
+                Serviceintervall (mån)
+              </Label>
+              <Input
+                id="newCategoryServiceIntervalMonths"
+                name="newCategoryServiceIntervalMonths"
+                type="number"
+                min={1}
+                placeholder="valfritt"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="newCategoryFirstServiceIntervalMonths" className="text-xs text-muted-foreground">
+                Första servicen (mån)
+              </Label>
+              <Input
+                id="newCategoryFirstServiceIntervalMonths"
+                name="newCategoryFirstServiceIntervalMonths"
+                type="number"
+                min={1}
+                placeholder="samma som ovan"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Valfritt — sätter kategorins standardvärde (kan ändras senare under Inställningar → Kategorier).
+          </p>
+        </div>
       )}
     </div>
   );

@@ -7,22 +7,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { CustomerPicker, type CustomerOption } from "@/components/customer-picker";
 import { ModelPicker, type ModelOption } from "@/components/model-picker";
 import { type CategoryOption } from "@/components/category-picker";
+import { type ManufacturerOption } from "@/components/manufacturer-picker";
 import { WARRANTY_YEAR_OPTIONS, WARRANTY_SELECT_ITEMS, CUSTOM_WARRANTY_VALUE, monthsToPresetOrCustom } from "@/lib/warranty";
 
 export function NewMachineForm({
   customers,
   models,
   categories,
+  manufacturers,
   initialCustomerId,
   initialModelId,
 }: {
   customers: CustomerOption[];
   models: ModelOption[];
   categories: CategoryOption[];
+  manufacturers: ManufacturerOption[];
   initialCustomerId?: string;
   initialModelId?: string;
 }) {
@@ -69,6 +71,7 @@ export function NewMachineForm({
         <ModelPicker
           models={models}
           categories={categories}
+          manufacturers={manufacturers}
           initialModelId={initialModelId}
           onModelChange={handleModelChange}
         />
@@ -117,12 +120,6 @@ export function NewMachineForm({
             </p>
           )}
         </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Checkbox id="offersPickupService" name="offersPickupService" />
-        <Label htmlFor="offersPickupService" className="font-normal">
-          Erbjuder hämt-/lämnservice (900 kr, kampanjblad)
-        </Label>
       </div>
       <div className="flex items-center gap-2 pt-2">
         <Button type="submit" disabled={!hasCustomer || isPending}>

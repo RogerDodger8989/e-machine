@@ -19,7 +19,7 @@ export async function attemptResend(logId: string): Promise<ResendOutcome> {
       customer: true,
       machine: {
         include: {
-          model: true,
+          model: { include: { manufacturer: true } },
           ownerships: { where: { ownedUntil: null }, include: { customer: true } },
         },
       },
@@ -49,7 +49,7 @@ export async function attemptResend(logId: string): Promise<ResendOutcome> {
   if (requiresMachine && log.machine) {
     variables = {
       customer_name: log.customer.name,
-      model_name: `${log.machine.model.manufacturer} ${log.machine.model.modelName}`,
+      model_name: `${log.machine.model.manufacturer.name} ${log.machine.model.modelName}`,
       serial_number: log.machine.serialNumber,
     };
   } else {

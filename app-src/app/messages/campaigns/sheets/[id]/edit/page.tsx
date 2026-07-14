@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { updateCampaignSheetTemplate } from "@/app/settings/campaign-sheet/actions";
+import { updateCampaignSheetTemplate } from "@/app/messages/campaigns/sheets/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,9 +21,9 @@ export default async function EditCampaignSheetPage({ params }: { params: Promis
     <div className="max-w-xl space-y-4">
       <Breadcrumbs
         items={[
-          { label: "Inställningar", href: "/settings" },
-          { label: "Kampanjblad", href: "/settings/campaign-sheet" },
-          { label: template.key, href: `/settings/campaign-sheet/${template.id}/edit` },
+          { label: "Kampanj", href: "/messages/campaigns" },
+          { label: "Kampanjblad", href: "/messages/campaigns/sheets" },
+          { label: template.key, href: `/messages/campaigns/sheets/${template.id}/edit` },
         ]}
       />
       <h1 className="text-2xl font-semibold">Redigera kampanjblad — {template.key}</h1>

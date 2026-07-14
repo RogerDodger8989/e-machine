@@ -5,15 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { sendCampaign } from "@/app/settings/campaigns/actions";
-
-export interface CampaignCustomer {
-  id: string;
-  name: string;
-  company: string | null;
-  phone: string | null;
-  email: string | null;
-}
+import { AudienceBuilder } from "@/components/audience-builder";
+import { sendCampaign } from "@/app/messages/campaigns/send/actions";
+import type { AudienceCustomer, AudienceFilterOptions } from "@/lib/audienceBuilder";
 
 export interface CampaignTemplate {
   key: string;
@@ -22,27 +16,19 @@ export interface CampaignTemplate {
   body: string;
 }
 
-function customerLabel(c: CampaignCustomer): string {
-  return c.company ? `${c.company} - ${c.name}` : c.name;
-}
-
 export function CampaignSend({
   customers,
   templates,
+  filterOptions,
 }: {
-  customers: CampaignCustomer[];
+  customers: AudienceCustomer[];
   templates: CampaignTemplate[];
+  filterOptions: AudienceFilterOptions;
 }) {
   const [selectedCustomers, setSelectedCustomers] = useState<Set<string>>(new Set());
   const [selectedTemplates, setSelectedTemplates] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<string | null>(null);
-
-  const allSelected = customers.length > 0 && selectedCustomers.size === customers.length;
-
-  function toggleAllCustomers() {
-    setSelectedCustomers(allSelected ? new Set() : new Set(customers.map((c) => c.id)));
-  }
 
   function toggleCustomer(id: string) {
     setSelectedCustomers((prev) => {
@@ -102,44 +88,59 @@ export function CampaignSend({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10">
-                  <Checkbox checked={allSelected} onCheckedChange={toggleAllCustomers} />
-                </TableHead>
-                <TableHead>Kund</TableHead>
-                <TableHead>Telefon</TableHead>
-                <TableHead>E-post</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customers.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedCustomers.has(c.id)}
-                      onCheckedChange={() => toggleCustomer(c.id)}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{customerLabel(c)}</TableCell>
-                  <TableCell>{c.phone ?? "—"}</TableCell>
-                  <TableCell>{c.email ?? "—"}</TableCell>
-                </TableRow>
-              ))}
-              {customers.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                    Inga kunder har lämnat samtycke till utskick ännu.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <AudienceBuilder customers={customers} {...filterOptions}>
+        {(filtered) => {
+          const allSelected = filtered.length > 0 && filtered.every((c) => selectedCustomers.has(c.customerId));
+          function toggleAllFiltered() {
+            setSelectedCustomers((prev) => {
+              const next = new Set(prev);
+              if (allSelected) filtered.forEach((c) => next.delete(c.customerId));
+              else filtered.forEach((c) => next.add(c.customerId));
+              return next;
+            });
+          }
+          return (
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox checked={allSelected} onCheckedChange={toggleAllFiltered} />
+                      </TableHead>
+                      <TableHead>Kund</TableHead>
+                      <TableHead>Telefon</TableHead>
+                      <TableHead>E-post</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((c) => (
+                      <TableRow key={c.customerId}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedCustomers.has(c.customerId)}
+                            onCheckedChange={() => toggleCustomer(c.customerId)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{c.customerLabel}</TableCell>
+                        <TableCell>{c.phone ?? "—"}</TableCell>
+                        <TableCell>{c.email ?? "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                    {filtered.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          Inga kunder matchar filtret.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          );
+        }}
+      </AudienceBuilder>
 
       <Button
         disabled={selectedCustomers.size === 0 || selectedTemplates.size === 0 || isPending}

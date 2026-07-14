@@ -3,22 +3,23 @@ import { prisma } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MachineModelsTable, type MachineModelRow } from "@/components/machine-models-table";
+import { resolveServiceIntervals } from "@/lib/serviceInterval";
 
 export const dynamic = "force-dynamic";
 
 export default async function MachineModelsPage() {
   const models = await prisma.machineModel.findMany({
-    orderBy: [{ manufacturer: "asc" }, { modelName: "asc" }],
-    include: { _count: { select: { machines: true } }, category: true },
+    orderBy: [{ manufacturer: { name: "asc" } }, { modelName: "asc" }],
+    include: { _count: { select: { machines: true } }, category: true, manufacturer: true },
   });
 
   const rows: MachineModelRow[] = models.map((m) => ({
     id: m.id,
-    manufacturer: m.manufacturer,
+    manufacturer: m.manufacturer.name,
     modelName: m.modelName,
     category: m.category?.name ?? null,
     standardWarrantyMonths: m.standardWarrantyMonths,
-    standardServiceIntervalMonths: m.standardServiceIntervalMonths,
+    standardServiceIntervalMonths: resolveServiceIntervals(m, m.category).recurringMonths,
     machineCount: m._count.machines,
   }));
 

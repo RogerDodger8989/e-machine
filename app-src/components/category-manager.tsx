@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
@@ -20,11 +21,19 @@ export interface CategoryRow {
   id: string;
   name: string;
   machineModelCount: number;
+  defaultServiceIntervalMonths: number | null;
+  defaultFirstServiceIntervalMonths: number | null;
+}
+
+function monthsLabel(months: number | null): string {
+  return months === null ? "—" : `${months} mån`;
 }
 
 function CategoryEditRow({ category }: { category: CategoryRow }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(category.name);
+  const [serviceMonths, setServiceMonths] = useState(category.defaultServiceIntervalMonths?.toString() ?? "");
+  const [firstMonths, setFirstMonths] = useState(category.defaultFirstServiceIntervalMonths?.toString() ?? "");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +44,8 @@ function CategoryEditRow({ category }: { category: CategoryRow }) {
       try {
         const form = new FormData();
         form.set("name", name);
+        form.set("defaultServiceIntervalMonths", serviceMonths);
+        form.set("defaultFirstServiceIntervalMonths", firstMonths);
         await updateCategory(category.id, form);
         setEditing(false);
       } catch (e) {
@@ -53,14 +64,34 @@ function CategoryEditRow({ category }: { category: CategoryRow }) {
   if (editing) {
     return (
       <TableRow>
-        <TableCell colSpan={3}>
-          <div className="flex items-center gap-2">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoFocus
-              className="max-w-xs"
-            />
+        <TableCell colSpan={4}>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Namn</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus className="w-40" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Serviceintervall (mån)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={serviceMonths}
+                onChange={(e) => setServiceMonths(e.target.value)}
+                placeholder="12"
+                className="w-32"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Första servicen (mån)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={firstMonths}
+                onChange={(e) => setFirstMonths(e.target.value)}
+                placeholder="Samma som ovan"
+                className="w-36"
+              />
+            </div>
             <Button size="sm" onClick={handleSave} disabled={isPending}>
               {isPending ? "Sparar…" : "Spara"}
             </Button>
@@ -69,6 +100,8 @@ function CategoryEditRow({ category }: { category: CategoryRow }) {
               variant="outline"
               onClick={() => {
                 setName(category.name);
+                setServiceMonths(category.defaultServiceIntervalMonths?.toString() ?? "");
+                setFirstMonths(category.defaultFirstServiceIntervalMonths?.toString() ?? "");
                 setEditing(false);
                 setError(null);
               }}
@@ -86,7 +119,8 @@ function CategoryEditRow({ category }: { category: CategoryRow }) {
   return (
     <TableRow>
       <TableCell className="font-medium">{category.name}</TableCell>
-      <TableCell>{category.machineModelCount}</TableCell>
+      <TableCell>{monthsLabel(category.defaultServiceIntervalMonths)}</TableCell>
+      <TableCell>{monthsLabel(category.defaultFirstServiceIntervalMonths)}</TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end gap-2">
           <Button variant="outline" size="icon-sm" onClick={() => setEditing(true)} title="Redigera">
@@ -121,6 +155,8 @@ function CategoryEditRow({ category }: { category: CategoryRow }) {
 
 export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
   const [newName, setNewName] = useState("");
+  const [newServiceMonths, setNewServiceMonths] = useState("");
+  const [newFirstMonths, setNewFirstMonths] = useState("");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -130,8 +166,12 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
       try {
         const form = new FormData();
         form.set("name", newName);
+        form.set("defaultServiceIntervalMonths", newServiceMonths);
+        form.set("defaultFirstServiceIntervalMonths", newFirstMonths);
         await createCategory(form);
         setNewName("");
+        setNewServiceMonths("");
+        setNewFirstMonths("");
       } catch (e) {
         setError((e as Error).message);
       }
@@ -140,13 +180,33 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Namn på ny kategori"
-          className="max-w-xs"
-        />
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Namn på ny kategori</Label>
+          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="t.ex. Cyklar" className="w-40" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Serviceintervall (mån)</Label>
+          <Input
+            type="number"
+            min={1}
+            value={newServiceMonths}
+            onChange={(e) => setNewServiceMonths(e.target.value)}
+            placeholder="12"
+            className="w-32"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Första servicen (mån)</Label>
+          <Input
+            type="number"
+            min={1}
+            value={newFirstMonths}
+            onChange={(e) => setNewFirstMonths(e.target.value)}
+            placeholder="Samma som ovan"
+            className="w-36"
+          />
+        </div>
         <Button onClick={handleAdd} disabled={isPending || !newName.trim()}>
           {isPending ? "Lägger till…" : "Lägg till"}
         </Button>
@@ -157,7 +217,8 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
         <TableHeader>
           <TableRow>
             <TableHead>Namn</TableHead>
-            <TableHead>Antal modeller</TableHead>
+            <TableHead>Serviceintervall</TableHead>
+            <TableHead>Första servicen</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -167,7 +228,7 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
           ))}
           {categories.length === 0 && (
             <TableRow>
-              <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                 Inga kategorier ännu.
               </TableCell>
             </TableRow>

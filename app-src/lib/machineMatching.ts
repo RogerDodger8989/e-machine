@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { findOrCreateManufacturerId } from "@/lib/manufacturers";
 
 /**
  * Hittar en befintlig maskinmodell (tillverkare + modellnamn, skiftlägesokänsligt)
@@ -7,14 +8,27 @@ import { prisma } from "@/lib/db";
  * kategorier (lib/categories.ts) och kunder (lib/import/matchCustomer.ts).
  * Delas mellan det vanliga maskinformuläret (app/machines/actions.ts) och
  * garanti-/ägandeimporten, så en modell aldrig dupliceras oavsett väg in.
+ * `manufacturer` tas emot som ett namn (fri text) — importflödena har bara
+ * det, inte ett id — och slås upp eller skapas via findOrCreateManufacturerId().
  */
 export async function findOrCreateMachineModel(
   manufacturer: string,
   modelName: string,
-  opts?: { categoryId?: string | null; standardWarrantyMonths?: number; standardServiceIntervalMonths?: number }
+  opts?: {
+    categoryId?: string | null;
+    standardWarrantyMonths?: number;
+    // undefined = inget angivet, default till 12 (t.ex. importflöden som
+    // inte känner till kategori-ärvning). Explicit `null` = låt fältet
+    // vara null i databasen så det ärver kategorins standardvärde istället
+    // (lib/serviceInterval.ts) — används av det interaktiva formuläret.
+    standardServiceIntervalMonths?: number | null;
+    firstServiceIntervalMonths?: number | null;
+  }
 ): Promise<string> {
+  const manufacturerId = await findOrCreateManufacturerId(manufacturer);
+
   const existing = await prisma.machineModel.findMany({
-    where: { manufacturer },
+    where: { manufacturerId },
     select: { id: true, modelName: true },
   });
   const match = existing.find((m) => m.modelName.toLowerCase() === modelName.toLowerCase());
@@ -22,11 +36,13 @@ export async function findOrCreateMachineModel(
 
   const model = await prisma.machineModel.create({
     data: {
-      manufacturer,
+      manufacturerId,
       modelName,
       categoryId: opts?.categoryId ?? null,
       standardWarrantyMonths: opts?.standardWarrantyMonths ?? 24,
-      standardServiceIntervalMonths: opts?.standardServiceIntervalMonths ?? 12,
+      standardServiceIntervalMonths:
+        opts?.standardServiceIntervalMonths === undefined ? 12 : opts.standardServiceIntervalMonths,
+      firstServiceIntervalMonths: opts?.firstServiceIntervalMonths ?? null,
     },
   });
   return model.id;

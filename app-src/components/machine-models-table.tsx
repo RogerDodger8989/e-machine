@@ -89,9 +89,7 @@ export function MachineModelsTable({ models }: { models: MachineModelRow[] }) {
         {sorted.map((m) => (
           <TableRow key={m.id}>
             <TableCell>
-              <Badge variant={m.manufacturer === "Stiga" ? "default" : "secondary"}>
-                {m.manufacturer}
-              </Badge>
+              <Badge variant="secondary">{m.manufacturer}</Badge>
             </TableCell>
             <TableCell>
               <Link href={`/machine-models/${m.id}`} className="hover:underline font-medium">

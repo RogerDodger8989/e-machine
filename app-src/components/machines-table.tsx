@@ -119,7 +119,7 @@ export function MachinesTable({ machines }: { machines: MachineRow[] }) {
             <TableCell className="text-muted-foreground">{m.category ?? "—"}</TableCell>
             <TableCell>
               <Link href={`/machine-models/${m.modelId}`} className="hover:underline">
-                <Badge variant={m.manufacturer === "Stiga" ? "default" : "secondary"} className="mr-1">
+                <Badge variant="secondary" className="mr-1">
                   {m.manufacturer}
                 </Badge>
                 {m.modelName}

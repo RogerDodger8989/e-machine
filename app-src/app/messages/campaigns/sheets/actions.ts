@@ -16,8 +16,8 @@ export async function createCampaignSheetTemplate(formData: FormData) {
     data: { key, channel: "email", legalBasis: "campaign_sheet", subject, body },
   });
 
-  revalidatePath("/settings/campaign-sheet");
-  redirect("/settings/campaign-sheet");
+  revalidatePath("/messages/campaigns/sheets");
+  redirect("/messages/campaigns/sheets");
 }
 
 export async function updateCampaignSheetTemplate(templateId: string, formData: FormData) {
@@ -32,6 +32,6 @@ export async function updateCampaignSheetTemplate(templateId: string, formData: 
     data: { subject, body, isActive },
   });
 
-  revalidatePath("/settings/campaign-sheet");
-  redirect("/settings/campaign-sheet");
+  revalidatePath("/messages/campaigns/sheets");
+  redirect("/messages/campaigns/sheets");
 }

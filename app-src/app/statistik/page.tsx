@@ -1,19 +1,9 @@
 import { getMachineSalesStats } from "@/lib/statistics";
-import { getMessageStats } from "@/lib/messageStatistics";
 import { StatistikFilters } from "@/components/statistik-filters";
 import { SalesBarChart, type BarChartDatum } from "@/components/sales-bar-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
-const STATUS_LABEL: Record<string, string> = { sent: "Skickat", failed: "Misslyckades", blocked: "Blockerat" };
-const CHANNEL_LABEL: Record<string, string> = { sms: "SMS", email: "E-post" };
-const LEGAL_BASIS_LABEL: Record<string, string> = {
-  service_reminder: "Servicepåminnelse",
-  marketing: "Marknadsföring",
-  order_ready: "Sms",
-};
-const STATUS_ORDER = ["sent", "blocked", "failed"];
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +52,6 @@ export default async function StatistikPage({
   const toDate = new Date(`${to}T23:59:59`);
 
   const stats = await getMachineSalesStats(fromDate, toDate);
-  const messageStats = await getMessageStats(fromDate, toDate);
 
   const monthlyByPeriod = new Map<string, BarChartDatum>();
   const cursor = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
@@ -99,28 +88,6 @@ export default async function StatistikPage({
       });
   }
   const yearlyData = [...yearlyByPeriod.values()].sort((a, b) => a.period.localeCompare(b.period));
-
-  const messageMonthlyByPeriod = new Map<string, BarChartDatum>();
-  const messageCursor = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
-  while (messageCursor <= monthEnd) {
-    const key = `${messageCursor.getFullYear()}-${String(messageCursor.getMonth() + 1).padStart(2, "0")}`;
-    messageMonthlyByPeriod.set(key, { period: key, label: monthLabel(key), values: {} });
-    messageCursor.setMonth(messageCursor.getMonth() + 1);
-  }
-  for (const row of messageStats.monthly) {
-    const label = STATUS_LABEL[row.status] ?? row.status;
-    const existing = messageMonthlyByPeriod.get(row.yearMonth);
-    if (existing) existing.values[label] = row.count;
-    else
-      messageMonthlyByPeriod.set(row.yearMonth, {
-        period: row.yearMonth,
-        label: monthLabel(row.yearMonth),
-        values: { [label]: row.count },
-      });
-  }
-  const messageMonthlyData = [...messageMonthlyByPeriod.values()].sort((a, b) => a.period.localeCompare(b.period));
-  const messageStatusCount = (status: string) =>
-    messageStats.byStatus.find((s) => s.status === status)?.count ?? 0;
 
   return (
     <div className="space-y-4">
@@ -251,88 +218,6 @@ export default async function StatistikPage({
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Utskick</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-6 text-sm">
-            <p>
-              <span className="text-muted-foreground">Totalt: </span>
-              <span className="font-medium tabular-nums">{messageStats.total}</span>
-            </p>
-            <p>
-              <span className="text-muted-foreground">Skickat: </span>
-              <span className="font-medium tabular-nums">{messageStatusCount("sent")}</span>
-            </p>
-            <p>
-              <span className="text-muted-foreground">Misslyckades: </span>
-              <span className="font-medium tabular-nums">{messageStatusCount("failed")}</span>
-            </p>
-            <p>
-              <span className="text-muted-foreground">Blockerat: </span>
-              <span className="font-medium tabular-nums">{messageStatusCount("blocked")}</span>
-            </p>
-          </div>
-
-          {messageStats.total === 0 ? (
-            <p className="text-sm text-muted-foreground">Inga utskick registrerade i det valda intervallet.</p>
-          ) : (
-            <>
-              <SalesBarChart
-                data={messageMonthlyData}
-                manufacturers={STATUS_ORDER.filter((s) => messageStats.statuses.includes(s)).map(
-                  (s) => STATUS_LABEL[s] ?? s
-                )}
-              />
-              <details>
-                <summary className="cursor-pointer text-sm text-muted-foreground">
-                  Visa uppdelat på kanal och typ
-                </summary>
-                <div className="mt-2 overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Kanal</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Antal</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {messageStats.byChannelStatus.map((row) => (
-                        <TableRow key={`${row.channel}-${row.status}`}>
-                          <TableCell>{CHANNEL_LABEL[row.channel] ?? row.channel}</TableCell>
-                          <TableCell>{STATUS_LABEL[row.status] ?? row.status}</TableCell>
-                          <TableCell className="text-right tabular-nums">{row.count}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <Table className="mt-4">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Typ</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Antal</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {messageStats.byLegalBasisStatus.map((row) => (
-                        <TableRow key={`${row.legalBasis}-${row.status}`}>
-                          <TableCell>{LEGAL_BASIS_LABEL[row.legalBasis] ?? row.legalBasis}</TableCell>
-                          <TableCell>{STATUS_LABEL[row.status] ?? row.status}</TableCell>
-                          <TableCell className="text-right tabular-nums">{row.count}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </details>
-            </>
-          )}
         </CardContent>
       </Card>
     </div>

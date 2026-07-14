@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PrintButton } from "@/components/print-button";
 import { sendCampaignSheetEmail } from "@/app/machines/[id]/campaign-sheet/actions";
@@ -61,22 +62,27 @@ export function CampaignSheetView({
     <div className="space-y-6">
       <div className="no-print flex items-center gap-2 flex-wrap">
         {options.length > 1 && (
-          <Select
-            value={selectedKey}
-            onValueChange={(v) => v && setSelectedKey(v)}
-            items={Object.fromEntries(options.map((o) => [o.key, o.key]))}
-          >
-            <SelectTrigger className="w-64">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map((o) => (
-                <SelectItem key={o.key} value={o.key}>
-                  {o.key}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="campaign-sheet-select" className="text-muted-foreground">
+              Mall
+            </Label>
+            <Select
+              value={selectedKey}
+              onValueChange={(v) => v && setSelectedKey(v)}
+              items={Object.fromEntries(options.map((o) => [o.key, o.key]))}
+            >
+              <SelectTrigger id="campaign-sheet-select" className="w-64">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((o) => (
+                  <SelectItem key={o.key} value={o.key}>
+                    {o.key}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
         <PrintButton />
         <Button type="button" variant="outline" onClick={handleMail} disabled={mailDisabled} title={mailDisabledReason ?? undefined}>

@@ -14,28 +14,35 @@ function customerLabel(customer: { name: string; company: string | null }): stri
 export default async function CampaignSheetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [machine, company, templates] = await Promise.all([
-    prisma.machine.findUnique({
-      where: { id },
-      include: {
-        model: true,
-        ownerships: { where: { ownedUntil: null }, include: { customer: true } },
-      },
-    }),
+  const machine = await prisma.machine.findUnique({
+    where: { id },
+    include: {
+      model: { include: { manufacturer: true } },
+      ownerships: { where: { ownedUntil: null }, include: { customer: true } },
+    },
+  });
+
+  if (!machine) notFound();
+
+  const [company, templates] = await Promise.all([
     getCompanyProfile(),
     prisma.messageTemplate.findMany({
-      where: { legalBasis: "campaign_sheet", isActive: true },
+      where: {
+        legalBasis: "campaign_sheet",
+        isActive: true,
+        machineModelLinks: { some: { machineModelId: machine.modelId } },
+      },
       orderBy: { key: "asc" },
     }),
   ]);
 
-  if (!machine || !machine.offersPickupService) notFound();
+  if (templates.length === 0) notFound();
   const owner = machine.ownerships[0]?.customer;
   if (!owner) notFound();
 
   const variables = {
     customer_name: owner.name,
-    model_name: `${machine.model.manufacturer} ${machine.model.modelName}`,
+    model_name: `${machine.model.manufacturer.name} ${machine.model.modelName}`,
     serial_number: machine.serialNumber,
     shop_name: company.companyName || "Verkstaden",
   };
@@ -48,7 +55,7 @@ export default async function CampaignSheetPage({ params }: { params: Promise<{ 
 
   const breadcrumbItems: BreadcrumbItem[] = [
     { label: customerLabel(owner), href: `/customers/${owner.id}` },
-    { label: `${machine.model.manufacturer} ${machine.model.modelName}`, href: `/machines/${machine.id}` },
+    { label: `${machine.model.manufacturer.name} ${machine.model.modelName}`, href: `/machines/${machine.id}` },
     { label: "Kampanjblad", href: `/machines/${machine.id}/campaign-sheet` },
   ];
 

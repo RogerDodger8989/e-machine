@@ -12,15 +12,26 @@ export default async function NewMachinePage({
 }) {
   const { customerId, modelId } = await searchParams;
 
-  const [customers, models, categories] = await Promise.all([
+  const [customers, models, categories, manufacturers] = await Promise.all([
     prisma.customer.findMany({
       where: { isDeleted: false },
       orderBy: { name: "asc" },
       select: { id: true, name: true, company: true, phone: true },
     }),
-    prisma.machineModel.findMany({ orderBy: [{ manufacturer: "asc" }, { modelName: "asc" }] }),
+    prisma.machineModel.findMany({
+      include: { manufacturer: true },
+      orderBy: [{ manufacturer: { name: "asc" } }, { modelName: "asc" }],
+    }),
     prisma.category.findMany({ orderBy: { name: "asc" } }),
+    prisma.manufacturer.findMany({ orderBy: { name: "asc" } }),
   ]);
+
+  const modelOptions = models.map((m) => ({
+    id: m.id,
+    manufacturer: m.manufacturer.name,
+    modelName: m.modelName,
+    standardWarrantyMonths: m.standardWarrantyMonths,
+  }));
 
   // Inga modeller ännu? Fäll ut "ny modell"-panelen direkt istället för att
   // visa en tom lista man ändå bara kan välja ett alternativ ur.
@@ -37,8 +48,9 @@ export default async function NewMachinePage({
         <CardContent>
           <NewMachineForm
             customers={customers}
-            models={models}
+            models={modelOptions}
             categories={categories}
+            manufacturers={manufacturers}
             initialCustomerId={customerId}
             initialModelId={initialModelId}
           />

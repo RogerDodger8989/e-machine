@@ -6,8 +6,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { TemplateVariableReference } from "@/components/template-variable-reference";
+import { CampaignSheetPreviewCell } from "@/components/campaign-sheet-preview-cell";
+import { renderTemplate } from "@/lib/messaging/renderTemplate";
 
 export const dynamic = "force-dynamic";
+
+// Samma exempelvärden som visas i variabeltabellen ovanför listan, så
+// förhandsgranskningen matchar det man precis läst.
+const PREVIEW_VARIABLES = {
+  customer_name: "Kalle Karlsson",
+  model_name: "Stiga Park 500W",
+  serial_number: "SN123456",
+  shop_name: "ÖsterlenExperten",
+};
 
 export default async function CampaignSheetListPage() {
   const templates = await prisma.messageTemplate.findMany({
@@ -19,8 +30,8 @@ export default async function CampaignSheetListPage() {
     <div className="space-y-4">
       <Breadcrumbs
         items={[
-          { label: "Inställningar", href: "/settings" },
-          { label: "Kampanjblad", href: "/settings/campaign-sheet" },
+          { label: "Kampanj", href: "/messages/campaigns" },
+          { label: "Kampanjblad", href: "/messages/campaigns/sheets" },
         ]}
       />
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -29,9 +40,9 @@ export default async function CampaignSheetListPage() {
           <Button
             variant="outline"
             nativeButton={false}
-            render={<Link href="/settings/campaign-sheet/send">Maila till flera kunder</Link>}
+            render={<Link href="/messages/campaigns/sheets/send">Maila till flera kunder</Link>}
           />
-          <Button nativeButton={false} render={<Link href="/settings/campaign-sheet/new">Nytt kampanjblad</Link>} />
+          <Button nativeButton={false} render={<Link href="/messages/campaigns/sheets/new">Nytt kampanjblad</Link>} />
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
@@ -49,25 +60,33 @@ export default async function CampaignSheetListPage() {
                 <TableHead>Namn</TableHead>
                 <TableHead>Ämne</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Förhandsgranskning</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {templates.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell>
-                    <Link href={`/settings/campaign-sheet/${t.id}/edit`} className="hover:underline font-medium">
-                      {t.key}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{t.subject ?? "—"}</TableCell>
-                  <TableCell>
-                    {t.isActive ? <Badge>Aktiv</Badge> : <Badge variant="secondary">Inaktiv</Badge>}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {templates.map((t) => {
+                const renderedSubject = t.subject ? renderTemplate(t.subject, PREVIEW_VARIABLES) : null;
+                const renderedBody = renderTemplate(t.body, PREVIEW_VARIABLES);
+                return (
+                  <TableRow key={t.id}>
+                    <TableCell>
+                      <Link href={`/messages/campaigns/sheets/${t.id}/edit`} className="hover:underline font-medium">
+                        {t.key}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{t.subject ?? "—"}</TableCell>
+                    <TableCell>
+                      {t.isActive ? <Badge>Aktiv</Badge> : <Badge variant="secondary">Inaktiv</Badge>}
+                    </TableCell>
+                    <TableCell>
+                      <CampaignSheetPreviewCell templateKey={t.key} subject={renderedSubject} body={renderedBody} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {templates.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                     Inga kampanjblad ännu.
                   </TableCell>
                 </TableRow>

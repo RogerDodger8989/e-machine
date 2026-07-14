@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LEGAL_BASIS_LABEL } from "@/lib/legalBasis";
 
 const ALL = "all";
 
@@ -16,12 +17,7 @@ const STATUS_ITEMS: Record<string, string> = {
   blocked: "Blockerat",
 };
 const CHANNEL_ITEMS: Record<string, string> = { [ALL]: "Alla", sms: "SMS", email: "E-post" };
-const LEGAL_BASIS_ITEMS: Record<string, string> = {
-  [ALL]: "Alla",
-  service_reminder: "Servicepåminnelse",
-  marketing: "Marknadsföring",
-  order_ready: "Sms",
-};
+const LEGAL_BASIS_ITEMS: Record<string, string> = { [ALL]: "Alla", ...LEGAL_BASIS_LABEL };
 
 export function MessageLogFilters({
   status,

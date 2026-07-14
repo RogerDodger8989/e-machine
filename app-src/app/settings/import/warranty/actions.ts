@@ -9,7 +9,6 @@ import { parseImportDate } from "@/lib/import/parseDate";
 import { findOrCreateMachineModel, findMachineBySerialNumber } from "@/lib/machineMatching";
 import type { PreviewRow } from "@/components/import/import-preview-table";
 
-type Manufacturer = "Stiga" | "Stihl";
 type WarrantyAction = "create-machine" | "update-machine" | "skip";
 
 interface NewCustomerData {
@@ -37,7 +36,7 @@ interface WarrantyPlanRow extends PreviewRow {
 async function planWarrantyImport(
   rows: Record<string, string>[],
   mapping: ColumnMapping,
-  manufacturer: Manufacturer
+  manufacturer: string
 ): Promise<WarrantyPlanRow[]> {
   const plans: WarrantyPlanRow[] = [];
 
@@ -123,7 +122,7 @@ async function planWarrantyImport(
 export async function previewWarrantyImport(
   rows: Record<string, string>[],
   mapping: ColumnMapping,
-  manufacturer: Manufacturer
+  manufacturer: string
 ): Promise<PreviewRow[]> {
   return planWarrantyImport(rows, mapping, manufacturer);
 }
@@ -139,7 +138,7 @@ export interface CommitWarrantyImportResult {
 export async function commitWarrantyImport(
   rows: Record<string, string>[],
   mapping: ColumnMapping,
-  manufacturer: Manufacturer
+  manufacturer: string
 ): Promise<CommitWarrantyImportResult> {
   const plans = await planWarrantyImport(rows, mapping, manufacturer);
   let machinesCreated = 0;

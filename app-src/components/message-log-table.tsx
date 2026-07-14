@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { RotateCw, Trash2 } from "lucide-react";
+import { Eye, RotateCw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { resendMessage, deleteMessageLog } from "@/app/messages/actions";
+import { LEGAL_BASIS_LABEL } from "@/lib/legalBasis";
 
 interface LogRow {
   id: string;
@@ -24,6 +25,7 @@ interface LogRow {
   legalBasis: string;
   status: string;
   recipientAddress: string | null;
+  subject: string | null;
   bodySent: string;
   createdAt: Date;
   errorMessage?: string | null;
@@ -35,11 +37,6 @@ interface LogRow {
 }
 
 const CHANNEL_LABEL: Record<string, string> = { sms: "SMS", email: "E-post" };
-const LEGAL_BASIS_LABEL: Record<string, string> = {
-  service_reminder: "Servicepåminnelse",
-  marketing: "Marknadsföring",
-  order_ready: "Sms",
-};
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive"> = {
   sent: "default",
   blocked: "secondary",
@@ -69,6 +66,42 @@ function ResendButton({ log }: { log: LogRow }) {
     >
       <RotateCw className={isPending ? "animate-spin" : undefined} />
     </Button>
+  );
+}
+
+function ViewContentButton({ log }: { log: LogRow }) {
+  return (
+    <Dialog>
+      <DialogTrigger
+        render={
+          <Button variant="outline" size="icon-sm" title="Visa fullständigt innehåll" aria-label="Visa innehåll">
+            <Eye />
+          </Button>
+        }
+      />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{CHANNEL_LABEL[log.channel] ?? log.channel} till {log.recipientAddress ?? "okänd mottagare"}</DialogTitle>
+          <DialogDescription>
+            {log.createdAt.toLocaleString("sv-SE")} · {LEGAL_BASIS_LABEL[log.legalBasis] ?? log.legalBasis}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          {log.subject && (
+            <div>
+              <div className="text-xs font-medium text-muted-foreground mb-1">Ämne</div>
+              <div className="text-sm font-medium">{log.subject}</div>
+            </div>
+          )}
+          <div>
+            <div className="text-xs font-medium text-muted-foreground mb-1">Innehåll</div>
+            <div className="text-sm whitespace-pre-line max-h-96 overflow-auto border rounded-md p-3 bg-muted/30">
+              {log.bodySent}
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -153,8 +186,13 @@ export function MessageLogTable({ logs, showCustomer = false }: { logs: LogRow[]
             <TableCell>{CHANNEL_LABEL[log.channel] ?? log.channel}</TableCell>
             <TableCell>{LEGAL_BASIS_LABEL[log.legalBasis] ?? log.legalBasis}</TableCell>
             <TableCell>{log.recipientAddress ?? "—"}</TableCell>
-            <TableCell className="max-w-[160px] truncate" title={log.bodySent}>
-              {log.bodySent}
+            <TableCell>
+              <div className="flex items-center gap-1.5 max-w-[200px]">
+                <span className="truncate" title={log.bodySent}>
+                  {log.bodySent}
+                </span>
+                <ViewContentButton log={log} />
+              </div>
             </TableCell>
             <TableCell>
               <div className="flex items-center gap-1.5">

@@ -54,3 +54,46 @@ export async function getMessageStats(from: Date, to: Date): Promise<MessageStat
     statuses: [...statusesSet].sort(),
   };
 }
+
+export interface MessageCategoryStat {
+  categoryId: string | null;
+  categoryName: string;
+  status: string;
+  count: number;
+}
+
+/**
+ * Grupperar utskick på maskinkategori (via message_log → machine → model →
+ * category) för att t.ex. visa "hur många cykelägare fick en påminnelse den
+ * här månaden" separat från gräsklippare. Utskick utan maskinkoppling (rena
+ * marknadsföringskampanjer, order-SMS) räknas inte in — de går inte att
+ * härleda till en kategori.
+ */
+export async function getMessageStatsByCategory(from: Date, to: Date): Promise<MessageCategoryStat[]> {
+  const rows = await prisma.messageLog.findMany({
+    where: { createdAt: { gte: from, lte: to }, machineId: { not: null } },
+    select: {
+      status: true,
+      machine: { select: { model: { select: { category: { select: { id: true, name: true } } } } } },
+    },
+  });
+
+  const map = new Map<string, MessageCategoryStat>();
+  for (const row of rows) {
+    const category = row.machine?.model.category ?? null;
+    const key = `${category?.id ?? "none"}|${row.status}`;
+    const existing = map.get(key);
+    if (existing) existing.count++;
+    else
+      map.set(key, {
+        categoryId: category?.id ?? null,
+        categoryName: category?.name ?? "Utan kategori",
+        status: row.status,
+        count: 1,
+      });
+  }
+
+  return [...map.values()].sort(
+    (a, b) => a.categoryName.localeCompare(b.categoryName) || a.status.localeCompare(b.status)
+  );
+}

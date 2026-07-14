@@ -21,11 +21,14 @@ export default async function MachinesPage({
       orderBy: { createdAt: "desc" },
       take: 1000,
       include: {
-        model: { include: { category: true } },
+        model: { include: { category: true, manufacturer: true } },
         ownerships: { where: { ownedUntil: null }, include: { customer: true } },
       },
     }),
-    prisma.machineModel.findMany({ orderBy: [{ manufacturer: "asc" }, { modelName: "asc" }] }),
+    prisma.machineModel.findMany({
+      include: { manufacturer: true },
+      orderBy: [{ manufacturer: { name: "asc" } }, { modelName: "asc" }],
+    }),
   ]);
 
   const rows: MachineRow[] = machines.map((m) => {
@@ -33,7 +36,7 @@ export default async function MachinesPage({
     return {
       id: m.id,
       serialNumber: m.serialNumber,
-      manufacturer: m.model.manufacturer,
+      manufacturer: m.model.manufacturer.name,
       modelName: m.model.modelName,
       category: m.model.category?.name ?? null,
       modelId: m.model.id,
@@ -45,12 +48,14 @@ export default async function MachinesPage({
     };
   });
 
+  const modelOptions = models.map((m) => ({ id: m.id, manufacturer: m.manufacturer.name, modelName: m.modelName }));
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-2xl font-semibold">Maskiner</h1>
         <div className="flex items-center gap-2">
-          <ModelMultiSelect models={models} selectedModelIds={selectedModelIds} />
+          <ModelMultiSelect models={modelOptions} selectedModelIds={selectedModelIds} />
           <Button nativeButton={false} render={<Link href="/machines/new">Ny maskin</Link>} />
         </div>
       </div>

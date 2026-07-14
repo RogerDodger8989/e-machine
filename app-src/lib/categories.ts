@@ -1,11 +1,15 @@
 import { prisma } from "@/lib/db";
+import { parseOptionalMonths } from "@/lib/serviceInterval";
 
 /** Läser vald kategori från formuläret — antingen ett id på en befintlig
  * kategori (`categoryId`) eller ett namn på en ny som skrivits in inline
  * (`newCategoryName`, hanteras via `<CategoryPicker>`). En ny kategori
  * skapas (eller återanvänds om namnet redan finns) direkt här, så det inte
  * krävs ett extra steg via Inställningar → Kategorier bara för att lägga
- * till en modell. */
+ * till en modell. Serviceintervallen (`newCategoryServiceIntervalMonths`/
+ * `newCategoryFirstServiceIntervalMonths`) är valfria och sätts bara vid
+ * skapande av en NY kategori — en befintlig kategoris värden ändras aldrig
+ * härifrån, det görs bara under Inställningar → Kategorier. */
 export async function resolveCategoryId(formData: FormData): Promise<string | null> {
   const categoryId = String(formData.get("categoryId") ?? "").trim();
   if (categoryId) return categoryId;
@@ -21,6 +25,11 @@ export async function resolveCategoryId(formData: FormData): Promise<string | nu
   const match = existing.find((c) => c.name.toLowerCase() === newName.toLowerCase());
   if (match) return match.id;
 
-  const category = await prisma.category.create({ data: { name: newName } });
+  const defaultServiceIntervalMonths = parseOptionalMonths(formData, "newCategoryServiceIntervalMonths");
+  const defaultFirstServiceIntervalMonths = parseOptionalMonths(formData, "newCategoryFirstServiceIntervalMonths");
+
+  const category = await prisma.category.create({
+    data: { name: newName, defaultServiceIntervalMonths, defaultFirstServiceIntervalMonths },
+  });
   return category.id;
 }

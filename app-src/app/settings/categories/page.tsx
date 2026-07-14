@@ -14,6 +14,8 @@ export default async function CategoriesSettingsPage() {
     id: c.id,
     name: c.name,
     machineModelCount: c._count.machineModels,
+    defaultServiceIntervalMonths: c.defaultServiceIntervalMonths,
+    defaultFirstServiceIntervalMonths: c.defaultFirstServiceIntervalMonths,
   }));
 
   return (
@@ -27,8 +29,10 @@ export default async function CategoriesSettingsPage() {
       <h1 className="text-2xl font-semibold">Kategorier</h1>
       <p className="text-sm text-muted-foreground">
         Kategorier används för att gruppera maskinmodeller (t.ex. &quot;Gräsklippare&quot;,
-        &quot;Motorsåg&quot;, &quot;Trimmer&quot;). Döper du om en kategori här slår det igenom på
-        alla modeller som använder den.
+        &quot;Motorsåg&quot;, &quot;Cyklar&quot;). Döper du om en kategori här slår det igenom på
+        alla modeller som använder den. Serviceintervall sätts här som ett standardvärde alla
+        modeller i kategorin ärver om de inte satt ett eget (t.ex. cyklar: 3 månader första
+        gången, sedan 12 månader) — en enskild modell kan alltid överstyra det under Modeller.
       </p>
       <CategoryManager categories={rows} />
     </div>

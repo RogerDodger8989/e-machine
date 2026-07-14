@@ -44,26 +44,67 @@ model Category {
   name      String   @unique
   createdAt DateTime @default(now()) @map("created_at")
 
+  // Standardvärden som maskinmodeller i kategorin ärver om de inte satt ett
+  // eget värde (null = ärv). Låter t.ex. "Cyklar" få en kort första-service
+  // (3 mån) och sedan årlig service, medan "Trädgårdsmaskiner" bara har ett
+  // årligt intervall — utan att behöva sätta samma värde på varje modell.
+  defaultServiceIntervalMonths      Int? @map("default_service_interval_months")
+  defaultFirstServiceIntervalMonths Int? @map("default_first_service_interval_months")
+
   machineModels MachineModel[]
 
   @@map("categories")
 }
 
+model Manufacturer {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  machineModels MachineModel[]
+
+  @@map("manufacturers")
+}
+
 model MachineModel {
   id                             String   @id @default(cuid())
-  manufacturer                   String // 'Stiga' | 'Stihl'
+  manufacturerId                 String   @map("manufacturer_id")
+  manufacturer                   Manufacturer @relation(fields: [manufacturerId], references: [id])
   modelName                      String   @map("model_name")
   categoryId                     String?  @map("category_id")
   category                       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   standardWarrantyMonths         Int      @default(24) @map("standard_warranty_months")
-  standardServiceIntervalMonths  Int      @default(12) @map("standard_service_interval_months")
+  // Nullable: null = ärv från kategorins defaultServiceIntervalMonths (eller
+  // 12 om varken modell eller kategori satt något). Ett konkret värde här
+  // vinner alltid över kategorins, se lib/serviceInterval.ts.
+  standardServiceIntervalMonths  Int?     @map("standard_service_interval_months")
+  firstServiceIntervalMonths     Int?     @map("first_service_interval_months")
   createdAt                      DateTime @default(now()) @map("created_at")
   updatedAt                      DateTime @updatedAt @map("updated_at")
 
-  machines Machine[]
+  machines           Machine[]
+  campaignSheetLinks MachineModelCampaignSheetTemplate[]
 
-  @@unique([manufacturer, modelName])
+  @@unique([manufacturerId, modelName])
   @@map("machine_models")
+}
+
+// Vilka campaign_sheet-mallar som gäller för en viss maskinmodell (t.ex.
+// "alla Stiga Park 500W" men inte en säsongskampanj för en annan modell).
+// Explicit jointabell, samma mönster som MachineOwnership, istället för en
+// implicit m2m — modellens redigeringssida styr innehållet (se
+// app/machine-models/actions.ts).
+model MachineModelCampaignSheetTemplate {
+  id             String   @id @default(cuid())
+  machineModelId String   @map("machine_model_id")
+  machineModel   MachineModel @relation(fields: [machineModelId], references: [id])
+  templateId     String   @map("template_id")
+  template       MessageTemplate @relation(fields: [templateId], references: [id])
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([machineModelId, templateId])
+  @@index([templateId])
+  @@map("machine_model_campaign_sheet_templates")
 }
 
 // --- Äganderegister ----------------------------------------------------------
@@ -76,7 +117,6 @@ model Machine {
   purchaseDate    DateTime? @map("purchase_date")
   warrantyEndDate DateTime? @map("warranty_end_date")
   notes           String?
-  offersPickupService Boolean @default(false) @map("offers_pickup_service")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
@@ -129,6 +169,8 @@ model MessageTemplate {
   isActive   Boolean  @default(true) @map("is_active")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
+
+  machineModelLinks MachineModelCampaignSheetTemplate[]
 
   @@map("message_templates")
 }
